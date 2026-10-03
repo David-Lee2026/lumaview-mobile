@@ -1,0 +1,525 @@
+{
+  "spec_sha256": "8e28d31802bbdb7d47d9507fc046632da43b6df69b2ebc801f8d0aefb176499e",
+  "allowed_status": [
+    "NOT_RUN",
+    "PASS",
+    "FAIL",
+    "BLOCKED"
+  ],
+  "criteria": [
+    {
+      "id": "C01",
+      "scene": "ARM64 APK 安装",
+      "criterion": "记录包名、版本、签名和设备 API；实际启动到文件页",
+      "primary_task": "T01",
+      "supporting_tasks": [
+        "T18",
+        "T20"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "C02",
+      "scene": "无 Google 服务",
+      "criterion": "目标手机完成核心本地流程，无账号／服务安装要求",
+      "primary_task": "T19",
+      "supporting_tasks": [
+        "T02",
+        "T17"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "target_physical_device"
+    },
+    {
+      "id": "C03",
+      "scene": "4 KB／16 KB",
+      "criterion": "ELF、APK 对齐与可用运行环境分开出结果",
+      "primary_task": "T20",
+      "supporting_tasks": [
+        "T01"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "P01",
+      "scene": "H.264／HEVC 常见文件",
+      "criterion": "720p／1080p、有声／无声、横／竖视频分别播放并报告实际解码器",
+      "primary_task": "T03",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "P02",
+      "scene": "真正拖动进度",
+      "criterion": "使用触控序列拖至 25%、75%；预览与松手后状态正确",
+      "primary_task": "T06",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "P03",
+      "scene": "慢速／音量",
+      "criterion": "0.25、0.5、1、2 倍及音量拖动、静音恢复；听音结果另列",
+      "primary_task": "T06",
+      "supporting_tasks": [
+        "T18",
+        "T19"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "P04",
+      "scene": "切文件／后台／横竖屏",
+      "criterion": "各重复 30 次，无旧回调污染和持续增长的资源占用",
+      "primary_task": "T03",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "P05",
+      "scene": "长视频／VFR",
+      "criterion": "时间显示不溢出，跳转按真实 PTS，未知时长不伪装可拖动",
+      "primary_task": "T13",
+      "supporting_tasks": [
+        "T06",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "R01",
+      "scene": "按钮进入框选",
+      "criterion": "点击只进入模式，不生成零尺寸区域",
+      "primary_task": "T11",
+      "supporting_tasks": [
+        "T05",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "R02",
+      "scene": "手指绘制／四角调整",
+      "criterion": "拖动路径与边框同步；应用、取消、过小区域均正确",
+      "primary_task": "T11",
+      "supporting_tasks": [
+        "T05",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "R03",
+      "scene": "手势互斥",
+      "criterion": "框选不改变进度、音量或背光；放大平移不触发快进",
+      "primary_task": "T05",
+      "supporting_tasks": [
+        "T11",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "R04",
+      "scene": "旋转与黑边",
+      "criterion": "0／90／180／270°、不同像素比例、横竖屏均映射到同一测试目标",
+      "primary_task": "T04",
+      "supporting_tasks": [
+        "T11",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "R05",
+      "scene": "原始像素映射",
+      "criterion": "非缩放数学误差目标≤1 源像素；有取整时同时记录实际取样区域",
+      "primary_task": "T04",
+      "supporting_tasks": [
+        "T11",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "R06",
+      "scene": "双指缩放／平移",
+      "criterion": "1–8 倍与边界限制；当前可视选区统计随视口一致更新",
+      "primary_task": "T11",
+      "supporting_tasks": [
+        "T04",
+        "T05",
+        "T07",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E01",
+      "scene": "真像素提亮",
+      "criterion": "同一帧、同一视图读取渲染输出，对比背光不变的输入／输出",
+      "primary_task": "T09",
+      "supporting_tasks": [
+        "T07",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E02",
+      "scene": "区域独立性",
+      "criterion": "合成固定暗 ROI，远离其边界的外部背景从黑变白；ROI 增益变化≤0.05 EV",
+      "primary_task": "T08",
+      "supporting_tasks": [
+        "T11",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E03",
+      "scene": "ROI 内明暗变化",
+      "criterion": "选区本身变暗时自动增益响应，不能用始终固定曝光假通过 E02",
+      "primary_task": "T08",
+      "supporting_tasks": [
+        "T11",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E04",
+      "scene": "同视图原画对比",
+      "criterion": "选区、矩阵、PTS 与字幕状态不变，仅旁路增强",
+      "primary_task": "T10",
+      "supporting_tasks": [
+        "T07",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E05",
+      "scene": "噪声与细节",
+      "criterion": "合成已知噪声的平坦暗块，增益归一化残差方差下降目标≥15%；标准边缘对比保留≥90%",
+      "primary_task": "T09",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E06",
+      "scene": "高光保护",
+      "criterion": "规范化高亮测试图的新增饱和像素≤0.5 个百分点；检查色相与光晕",
+      "primary_task": "T09",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E07",
+      "scene": "时间稳定",
+      "criterion": "固定场景预热后曝光逐秒变化≤0.05 EV；换镜头后的历史清除独立测试",
+      "primary_task": "T08",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E08",
+      "scene": "数值格式",
+      "criterion": "浮点／规范化纹理路径均对照已知亮度，误差目标≤0.05 EV，无 NaN／Inf",
+      "primary_task": "T08",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E09",
+      "scene": "HDR 旁路",
+      "criterion": "检测到 HDR 时实际关闭 SDR 增强并说明；不能仍显示有效档位",
+      "primary_task": "T10",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "E10",
+      "scene": "真实微光素材",
+      "criterion": "至少室内暗光、路灯高反差、人物运动、细文字四类；报告噪声和细节，不仅报告均值",
+      "primary_task": "T19",
+      "supporting_tasks": [],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "target_physical_device"
+    },
+    {
+      "id": "T01",
+      "scene": "A／B 触控手柄",
+      "criterion": "实际手势改变区间；不跨越，可预览和输入时间",
+      "primary_task": "T13",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "T02",
+      "scene": "循环与拖动",
+      "criterion": "循环范围跟随 A／B 更新，关闭循环恢复普通播放",
+      "primary_task": "T13",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "T03",
+      "scene": "原码流复制",
+      "criterion": "至少 H.264、HEVC 的同容器样本负载逐包核对，输出完整解码",
+      "primary_task": "T14",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "T04",
+      "scene": "非关键帧起点",
+      "criterion": "确认窗显示请求／实际范围，开放 GOP 或未知情况不能冒充精确无损",
+      "primary_task": "T14",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "T05",
+      "scene": "精确导出",
+      "criterion": "首末可见帧与所选区间误差目标≤1 帧；音频边界按编码帧粒度另列",
+      "primary_task": "T15",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "T06",
+      "scene": "音画同步",
+      "criterion": "以已知时间点声画事件检验，新增偏移目标≤40 ms；不掩盖原片偏移",
+      "primary_task": "T15",
+      "supporting_tasks": [
+        "T14",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "T07",
+      "scene": "不支持轨道",
+      "criterion": "明确列出未保留轨道，不静默丢失，不标注全部保留",
+      "primary_task": "T14",
+      "supporting_tasks": [
+        "T15",
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "S01",
+      "scene": "URI 授权变化",
+      "criterion": "持久授权、撤销、文件移动／删除、外部打开都得到可理解结果",
+      "primary_task": "T02",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "S02",
+      "scene": "磁盘不足／取消",
+      "criterion": "不覆盖源文件，无未说明半成品；失败后可再次导出",
+      "primary_task": "T16",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "S03",
+      "scene": "原文件保护",
+      "criterion": "同名、不同 URI 指向同文档及重复输出均不覆盖现存源文件",
+      "primary_task": "T16",
+      "supporting_tasks": [
+        "T18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "S04",
+      "scene": "截图与隐私",
+      "criterion": "截图内容符合提示；抓包／权限审查无本应用自动上传",
+      "primary_task": "T17",
+      "supporting_tasks": [
+        "T18",
+        "T20"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "F01",
+      "scene": "1080p30 长播放",
+      "criterion": "第 9.3 节目标；全部计数器、温度可用性和末段结果随报告",
+      "primary_task": "T19",
+      "supporting_tasks": [],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "target_physical_device"
+    },
+    {
+      "id": "F02",
+      "scene": "降级／恢复",
+      "criterion": "实际负载触发正确提示；旁路后不能仍声称增强开启",
+      "primary_task": "T12",
+      "supporting_tasks": [
+        "T18",
+        "T19"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    },
+    {
+      "id": "F03",
+      "scene": "资源与竞争",
+      "criterion": "暂存文件、FD、Surface、GPU 资源正确释放；精确导出不与预览争抢造成死锁",
+      "primary_task": "T18",
+      "supporting_tasks": [
+        "T03",
+        "T07",
+        "T12",
+        "T16",
+        "T19"
+      ],
+      "status": "NOT_RUN",
+      "evidence": [],
+      "measurements": null,
+      "environment_required": "specified_test_environment"
+    }
+  ]
+}

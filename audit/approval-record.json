@@ -1,0 +1,12 @@
+{
+  "spec_file": "docs/superpowers/specs/2026-10-03-lumaview-mobile-design.md",
+  "spec_sha256": "8e28d31802bbdb7d47d9507fc046632da43b6df69b2ebc801f8d0aefb176499e",
+  "spec_approval": "APPROVED_IN_CONVERSATION",
+  "approval_message": "确认上述内容，进入逐任务实施计划。",
+  "plan_approval": "PENDING",
+  "execution_mode": "PENDING",
+  "implementation_status": "NOT_STARTED",
+  "apk_produced": false,
+  "mobile_tests_executed": false,
+  "note": "保留规格原文的历史状态行；以本确认记录说明其已在会话中获批准。本轮不修改远程仓库或原应用。"
+}

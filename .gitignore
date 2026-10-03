@@ -1,0 +1,16 @@
+.gradle/
+.kotlin/
+.superpowers/
+**/build/
+**/obj/
+**/libs/
+app/src/main/jniLibs/
+local.properties
+ndk.properties
+upstream/
+native-inputs/
+toolchain-evidence/
+evidence/
+*.jks
+*.keystore
+*.apk

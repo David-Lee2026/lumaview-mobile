@@ -1,0 +1,18 @@
+{
+  "scope": "Only named reference files, NOT complete upstream source",
+  "upstreamCommit": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
+  "files": [
+    {
+      "path": "vendor-reference/mpv-android/app/build.gradle",
+      "gitBlob": "ffc90a0a950a06b695f835bbd118ebcd545cb52e",
+      "sha256": "3437197e884425841aa255e494582039d7eea01ba9325d8533474586f8edb7ae"
+    },
+    {
+      "path": "licenses/mpv-android-MIT.txt",
+      "gitBlob": "81d2ff31ab3e434d6f67fa5ac1e15e345f175db6",
+      "sha256": "a618084dcea6a9a555571ffc1c7dd828eb40c20c8287dc3c3cbf5831ce72c506"
+    }
+  ],
+  "adaptedGradleSha256": "a363c6c1c0f9b970358c08dfa3cc4e5acbd98b468f75e864b6ea3d912d4e08a8",
+  "adaptationValidated": "text and exact input identity; no AGP compilation performed"
+}

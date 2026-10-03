@@ -1,0 +1,23 @@
+{
+  "scope": "DOCUMENT_LAYOUT_ONLY",
+  "render_method": "In-memory HTML via Playwright set_content; file URL navigation was blocked by browser configuration.",
+  "checks": [
+    {
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1050,
+      "horizontal_page_overflow": false,
+      "task_anchors": 20,
+      "task11_link_works": true
+    },
+    {
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "horizontal_page_overflow": false,
+      "task_anchors": 20,
+      "task11_link_works": true
+    }
+  ],
+  "mobile_app_tests_executed": false
+}

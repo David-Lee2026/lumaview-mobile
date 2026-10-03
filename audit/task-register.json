@@ -1,0 +1,1362 @@
+{
+  "status": "PLAN_ONLY",
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "固定源码、最小测试基础与可构建安装包",
+      "phase": "M1",
+      "depends_on": [],
+      "acceptance": [
+        "C01",
+        "C03"
+      ],
+      "files": [
+        [
+          "修改",
+          "app/build.gradle"
+        ],
+        [
+          "修改",
+          "app/src/main/AndroidManifest.xml"
+        ],
+        [
+          "修改",
+          "buildscripts/include/depinfo.sh"
+        ],
+        [
+          "新建",
+          "buildscripts/lvm-build.sh"
+        ],
+        [
+          "新建",
+          "buildscripts/lvm-lock.json"
+        ],
+        [
+          "新建",
+          "qa/conftest.py"
+        ],
+        [
+          "新建",
+          "qa/runner.py"
+        ],
+        [
+          "新建",
+          "qa/cases.json"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/BaselineScenario.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/ScenarioRunner.kt"
+        ],
+        [
+          "新建",
+          "qa/tests/test_runner_protocol.py"
+        ],
+        [
+          "新建",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "新建",
+          "qa/fixtures.json"
+        ]
+      ],
+      "consumes": "已批准规格；上游三个固定提交及构建脚本。",
+      "produces": "`buildscripts/lvm-build.sh --abi arm64-v8a --stage baseline`；`run_case(case_id: str, options: dict | None = None) -> dict`，测试协议见《接口与测试契约》。",
+      "scenario": "baseline",
+      "assertions": [
+        "assert r[\"application_id\"] == \"org.lumaview.mobile\"",
+        "assert r[\"min_sdk\"] == 23 and r[\"target_sdk\"] == 36",
+        "assert r[\"apk_abis\"] == [\"arm64-v8a\"]",
+        "assert r[\"unpinned_dependencies\"] == []",
+        "assert r[\"native_library_load_error\"] is None",
+        "assert r[\"evidence_validator_rejects_forged_pass\"]",
+        "assert r[\"version_name\"] == \"0.1.0-test\" and r[\"version_code\"] == 1"
+      ],
+      "implementation": "在独立本地工作区检出固定上游，保留原 Java/Kotlin namespace `is.xyz.mpv` 与旧 JNI 符号，另设独立 applicationId；删除 allstorage 发布变体。包装原生构建脚本，固定 NDK `30.0.16248370`、Build Tools `36.0.0`；保留基线 AGP／Gradle／Kotlin 版本。逐依赖记录来源、完整提交／版本、归档 SHA256 和许可证，不用浮动分支替代。 JDK采用21作为本计划构建起点，并在本任务用所锁AGP/Gradle的实际启动与构建校验；不通过则记录工具链冲突后修订锁文件，不能继续宣称基线可构建。固定应用versionName为0.1.0-test、versionCode为1。",
+      "wiring": "先建立只测原始播放内核的 baseline 入口与测试探针；随后主入口由 T02／T06 接替。原生库未构建时不给出空壳 APK。构建脚本默认不安装／删除用户软件；首次安装只对指定测试设备执行。 建立ScenarioRunner与run_case的证据校验负例；同时创建generate_fixtures.py/fixtures.json的最小有声、无声H.264集合。后续任务在首次需要时追加自己的素材，不能等T18才生成前置测试素材。测试APK只安装到明确选择的测试设备。",
+      "exit_gate": "干净工作区可重复构建；安装／加载／4KB与16KB静态检查分别留证。没有 ARM64 设备时安装子项 BLOCKED，不把编译等同安装。",
+      "risk": "本轮不创建应用工程。T01 执行时，源码下载失败、缺工具链或依赖校验失败就停止该任务，不降级为来源未知的二进制。",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T02",
+      "title": "SAF 文件访问、文件页与只读输入租约",
+      "phase": "M1",
+      "depends_on": [
+        "T01"
+      ],
+      "acceptance": [
+        "S01",
+        "C02"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/storage/DocumentAccess.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/storage/ReadLease.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/library/LibraryActivity.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/library/PlaybackHistory.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/DocumentScenario.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/fixtures/FaultDocumentsProvider.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/AndroidManifest.xml"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/storage/DocumentModels.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/AndroidManifest.xml"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "Android ContentResolver／系统实际授予的 URI 权限；T01 基础工程。",
+      "produces": "`DocumentAccess.openRead(uri: Uri, allowCache: Boolean, reply: (Result<ReadLease>) -> Unit): Long`；`listChildren(tree: Uri, reply: (Result<List<DocumentEntry>>) -> Unit): Long`；`PlaybackHistory.save(documentId: String, positionUs: Long): Unit`。 `DocumentAccess.cancel(requestId: Long): Unit`；`DocumentAccess.reopenRead(identity: DocumentIdentity, reply: (Result<ReadLease>) -> Unit): Long`，导出调用方获取独立读取位置，不从DocumentIdentity猜文件路径。",
+      "scenario": "document",
+      "assertions": [
+        "assert r[\"seekable_open_copied_bytes\"] == 0",
+        "assert r[\"read_only\"] and r[\"revoked_grant_error\"] == \"NEEDS_RESELECT\"",
+        "assert r[\"unknown_size_cancel_releases_fd\"]",
+        "assert r[\"cache_reserve_bytes\"] == 256 * 1024 * 1024",
+        "assert r[\"independent_read_offsets_verified\"]"
+      ],
+      "implementation": "实现 openRead 和可关闭 ReadLease：URI 身份、FD／可寻址性、已知或未知长度、取消、缓存同意结果都显式保存。缓存先征求同意，边写边检查至少保留 256 MiB；授权不是永久有效承诺。",
+      "wiring": "文件与文件夹授权页只消费异步列表；不猜真实路径、不在主线程递归扫描。最近播放只存私有目录；断点由后续 PlayerSession 的真实位置写入。对提供方报告的远程文档显示来源；无法判断时标为来源未知。 用仅测试包可注册的FaultDocumentsProvider模拟撤权、未知长度和读取失败；不篡改用户提供方或真实媒体。",
+      "exit_gate": "中文名、空格、只读文件、撤销权限、移动／删除、不可寻址 FD、未知长度均有可读结果；常规本地文件打开不整段复制。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T03",
+      "title": "播放会话、异步代次与 Surface 安全生命周期",
+      "phase": "M1",
+      "depends_on": [
+        "T01",
+        "T02"
+      ],
+      "acceptance": [
+        "P01",
+        "P04",
+        "F03"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/player/PlayerSession.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/player/PlayerStateReducer.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/player/SurfaceCoordinator.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/is/xyz/mpv/BaseMPVView.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/jni/event.cpp"
+        ],
+        [
+          "新建",
+          "app/src/main/jni/lumaview/surface_bridge.cpp"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/SessionScenario.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "`ReadLease`；上游 MPVLib，使用受控的单实例生命周期。",
+      "produces": "`PlayerSession.open(input: ReadLease): Long`；`setPaused(paused: Boolean): Long`；`seekUs(positionUs: Long, mode: SeekMode): Long`；`setSpeed(speed: Double): Long`；`selectTrack(kind: TrackKind, mpvId: Long?): Long`；`observe(listener: (PlayerState) -> Unit): AutoCloseable`；`detachSurface(surfaceGeneration: Long): Long`。",
+      "scenario": "session",
+      "assertions": [
+        "assert r[\"switch_iterations\"] == 30 and r[\"stale_events_applied\"] == 0",
+        "assert r[\"surface_cycles\"] == 30 and r[\"submit_after_invalidation\"] == 0",
+        "assert r[\"detach_ack_before_native_release\"]",
+        "assert r[\"decoder_name\"] and r[\"codec_release_count\"] == r[\"codec_create_count\"]"
+      ],
+      "implementation": "PlayerSession 独占命令线程，MPV 事件回到状态归约器；每个请求携带媒体／Surface 代次和 requestId。停止旧媒体、清空待处理请求并完成旧资源释放后，才开放新代次。seek 命令受理不等于呈现完成。 本任务即在model/Contracts.kt声明PointD、SourceRect、ColorInfo、VideoGeometry、TrackKind/TrackInfo、PlayerState、SeekMode；PlayerStateReducer.kt只保存状态归约行为，后续不搬移模型定义。",
+      "wiring": "以 SurfaceCoordinator 替换旧 Surface 回调的无屏障释放：回调首先禁止新帧提交；native 保持有所有权的窗口引用；渲染线程处理失效并发回 detach 回执后释放。处理 EGL_BAD_SURFACE／上下文丢失；UI 不等待完整解码或 GPU 回读。超时转可读错误并关闭会话，不能 sleep 固定时间后强释放仍在使用的对象。",
+      "exit_gate": "常见 H.264／HEVC、有声／无声实际播放；30 次切文件／后台／旋转重建无旧状态污染、无新增未回收对象。每次记录实际解码器，不以“请求硬解”推断硬解成功。",
+      "risk": "上游 BaseMPVView 有释放竞态提醒；T03 是原生增强的前置阻断任务。[R3]",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T04",
+      "title": "源视频坐标与统一视口数学",
+      "phase": "M1",
+      "depends_on": [
+        "T03"
+      ],
+      "acceptance": [
+        "R04",
+        "R05",
+        "R06"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/viewport/ViewportController.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/viewport/ViewportPolicy.kt"
+        ],
+        [
+          "新建",
+          "app/src/test/java/org/lumaview/mobile/viewport/ViewportTest.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/ViewportScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "`PlayerState.videoGeometry`；系统显示尺寸与 density；容器裁剪、SAR、文件方向。",
+      "produces": "`ViewportController.compute(geometry: VideoGeometry, viewport: ViewportRequest): ViewportSnapshot`；`screenToSource(point: PointD, snapshot: ViewportSnapshot): PointD?`。",
+      "scenario": "viewport",
+      "assertions": [
+        "assert r[\"tested_rotations\"] == [0, 90, 180, 270]",
+        "assert r[\"max_roundtrip_source_error_px\"] <= 1.0",
+        "assert r[\"blackbar_point_rejected\"] and r[\"container_crop_applied_once\"]",
+        "assert r[\"stats_rect\"] == r[\"visible_source_rect\"]"
+      ],
+      "implementation": "建立 double 精度的有效源矩形→SAR→合成直角旋转→适配窗口→缩放／平移的唯一矩阵；逆矩阵映射触点。源矩形用像素边界半开区间，取样时另加半像素约定；不把屏幕图像作为原图。 在Contracts.kt扩展ViewportRequest/ViewportSnapshot；ViewportPolicy.kt只实现边界合法性与取整策略。",
+      "wiring": "屏幕显示与统计都消费同一 ViewportSnapshot／viewRevision；仅视口模块能产生裁剪。放大限制 1–8 倍，平移夹紧；全画面恢复保留容器正常裁剪。原生最终取整后的区域经回执反映到界面。",
+      "exit_gate": "固定目标网格在四个旋转、横竖屏、非方形像素、内置裁剪与黑边下回指同一目标；记录取整前后范围，≤1 源像素数学误差不等于视频变得更清晰。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T05",
+      "title": "手势优先级与触点唯一所有权",
+      "phase": "M1",
+      "depends_on": [
+        "T04"
+      ],
+      "acceptance": [
+        "R01",
+        "R02",
+        "R03",
+        "R06"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/gesture/GestureRouter.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/gesture/GestureState.kt"
+        ],
+        [
+          "新建",
+          "app/src/test/java/org/lumaview/mobile/gesture/GestureRouterTest.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/GestureScenario.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "`ViewportSnapshot`、MotionEvent 与控件命中结果。",
+      "produces": "`GestureRouter.route(event: MotionEvent, hit: HitTarget): List<GestureAction>`；`cancel(reason: CancelReason): List<GestureAction>`。",
+      "scenario": "gesture",
+      "assertions": [
+        "assert r[\"button_up_creates_selection\"] is False",
+        "assert r[\"roi_changes_playback_volume_backlight\"] == [False, False, False]",
+        "assert r[\"pointer_reorder_preserves_owner\"] and r[\"action_cancel_clears_capture\"]",
+        "assert r[\"owner_changes_within_sequence\"] == 0"
+      ],
+      "implementation": "以对话框／面板→已抓取手柄→框选→放大缩放平移→普通手势的固定顺序派发；跟踪 pointerId，不使用触点数组索引代替身份。控件抬手不得泄漏为新序列。",
+      "wiring": "过小选框保持待选；多指中断、ACTION_CANCEL、窗口失焦、安全返回统一取消。锁定时只开放解锁热区。拖进度与调音量的同一输入序列不能同时传给框选模块。",
+      "exit_gate": "用包含第二指加入／第一指离开／取消的原始触控序列回放；只验证路由状态，不假称完成 T11 的真实选择界面验收。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T06",
+      "title": "可见播放控制、慢速、音量、轨道与横竖屏布局",
+      "phase": "M1",
+      "depends_on": [
+        "T02",
+        "T03",
+        "T05"
+      ],
+      "acceptance": [
+        "P02",
+        "P03",
+        "P05"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/ui/PlayerActivity.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/ui/TransportController.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/ui/TrackPanel.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/res/layout/activity_lvm_player.xml"
+        ],
+        [
+          "新建",
+          "app/src/main/res/layout-land/activity_lvm_player.xml"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/TransportScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/AndroidManifest.xml"
+        ],
+        [
+          "新建",
+          "app/src/main/res/values/strings_lvm.xml"
+        ],
+        [
+          "新建",
+          "app/src/main/res/values-zh-rCN/strings_lvm.xml"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "`PlayerSession` 的状态回报；GestureRouter 的已归属操作；PlaybackHistory。",
+      "produces": "`TransportController.onScrub(positionUs: Long, phase: DragPhase): Unit`；`setMediaVolume(normalized: Double): Unit`；`setWindowBrightness(value: Float): Unit`。",
+      "scenario": "transport",
+      "assertions": [
+        "assert r[\"seek_fractions\"] == [0.25, 0.75] and r[\"restores_prior_pause\"]",
+        "assert r[\"preview_min_interval_ms\"] >= 150 and r[\"pending_preview_max\"] <= 1",
+        "assert r[\"speed_choices\"] == [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]",
+        "assert r[\"min_touch_target_dp\"] >= 48 and r[\"window_brightness_only\"]"
+      ],
+      "implementation": "实现真实可拖动时间轴、−10 秒／播放暂停／+30 秒、速度选择与单一媒体音量；mpv 音量维持 unity，音量条及右侧手势驱动同一 STREAM_MUSIC，不串联两层增益。左侧手势只改当前 Window 的亮度。",
+      "wiring": "时间未知／不可寻址禁用拖动；150ms 合并预览，最终 seek 呈现回执到达才恢复状态。合成实际PTS而非固定FPS假定。3秒自动隐藏只用于普通播放；暂停、剪辑、选框、错误及面板期间常显。轨道列表用真实 ID；继承外挂字幕需独立 SAF 授权。适配系统返回、触控锁定与系统栏 inset，不沿用上游默认网络打开入口。",
+      "exit_gate": "真实手势拖动、慢速、静音恢复及横竖屏截图通过；扬声器听音单列 T19，模拟器属性变化不算听音。M1 仅形成基础播放测试包，画面增强仍标未实现。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T07",
+      "title": "原生 GPU 扩展、快照提交与实际应用回执",
+      "phase": "M2",
+      "depends_on": [
+        "T03",
+        "T04"
+      ],
+      "acceptance": [
+        "E01",
+        "E04",
+        "R06",
+        "F03"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/enhance/NativeEnhancementStage.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/jni/lumaview/enhancement_bridge.cpp"
+        ],
+        [
+          "修改",
+          "app/src/main/jni/Android.mk"
+        ],
+        [
+          "新建",
+          "native-patches/mpv/0001-lvm-frame-stage.patch"
+        ],
+        [
+          "修改",
+          "buildscripts/deps/mpv/video/out/gpu/video.c"
+        ],
+        [
+          "修改",
+          "buildscripts/deps/mpv/video/out/vo_gpu.c"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/NativeStageScenario.kt"
+        ],
+        [
+          "补丁新增",
+          "buildscripts/deps/mpv/libmpv/lvm_ext.h"
+        ],
+        [
+          "补丁新增",
+          "buildscripts/deps/mpv/video/out/gpu/lvm_stage.h"
+        ],
+        [
+          "补丁新增",
+          "buildscripts/deps/mpv/video/out/gpu/lvm_stage.c"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/player/client.c"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/video/out/vo.h"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/video/out/gpu/video.h"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/meson.build"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "PlayerSession 的原生句柄（不暴露裸指针到 UI）；ViewportSnapshot；Surface 代次。 共享EnhanceParams／StatsState布局本任务预先声明，后续填充行为。",
+      "produces": "`submitFrame(snapshot: FrameSnapshot): SubmitStatus`；`observeReceipt(listener: (RenderReceipt) -> Unit): AutoCloseable`。新增补丁 ABI：`mpv_lvm_submit(mpv_handle*, const lvm_frame_v1*)`、`mpv_lvm_poll_receipt(mpv_handle*, lvm_receipt_v1*)`，详见契约；这些不是既有 mpv API。",
+      "scenario": "native_stage",
+      "assertions": [
+        "assert r[\"vo\"] == \"gpu\" and r[\"uniform_updates_seen\"] > 0",
+        "assert r[\"receipt_view_revision\"] == r[\"displayed_view_revision\"]",
+        "assert r[\"shader_recompiles_during_drag\"] == 0 and r[\"decoder_reopens_during_drag\"] == 0",
+        "assert r[\"released_surface_receipts_accepted\"] == 0"
+      ],
+      "implementation": "在固定 libmpv 源码查明 RGB转换后、视频放大及字幕合成前的实际插入点，并保存源码锚点与补丁。初始增强 stage 为恒等输出，先证明 JNI→邮箱→渲染线程 uniforms→回执链路。用长度1合并邮箱替换过时快照，所有GL对象由渲染线程拥有。 同时在Contracts.kt声明FrameStamp、FrameSnapshot、RenderReceipt、SubmitStatus、ResetReason、EnhanceMode/EnhanceParams、LockRequest与StatsState的数据布局，先以原画通路及无效数值标识接通，不等待后续算法任务才定义ABI。",
+      "wiring": "同一渲染边界应用视口与增强快照；以最终可见源矩形取样，不能UI独立设置video-crop再另送统计区域。复用上游纹理管理和状态缓存，不用未知 raw GL 调用破坏状态。所有变体预编译；paused 时请求重绘。主路径失败显示旁路原因，不能改成 mediacodec_embed 仍称增强已生效。",
+      "exit_gate": "恒等阶段在设备上显示真实视频、更新已生效回执；变更选区不会重启解码器。未打通不能进入“弱光功能完成”声明。",
+      "risk": "固定 GPU 源文件的完整代码本轮未成功取得；插入函数与 patch context 需在此任务只读核对后定案。目标文件和所需语义已定，不伪造行号或已有扩展符号。glsl-shader-opts 不用于 vo=gpu。[R4]",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T08",
+      "title": "选区亮度统计、数值编码与曝光时间稳定",
+      "phase": "M2",
+      "depends_on": [
+        "T07"
+      ],
+      "acceptance": [
+        "E02",
+        "E03",
+        "E07",
+        "E08"
+      ],
+      "files": [
+        [
+          "新建",
+          "native-patches/mpv/0002-lvm-roi-statistics.patch"
+        ],
+        [
+          "新建",
+          "buildscripts/deps/mpv/video/out/gpu/lvm_statistics.c"
+        ],
+        [
+          "新建",
+          "shaders/lvm/roi_stats.glsl"
+        ],
+        [
+          "新建",
+          "shaders/lvm/reduce.glsl"
+        ],
+        [
+          "新建",
+          "shaders/lvm/exposure.glsl"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/StatisticsScenario.kt"
+        ],
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "新建",
+          "qa/reference/statistics_reference.py"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/video/out/gpu/lvm_stage.h"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/meson.build"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "FrameSnapshot 的可见源矩形、颜色条件与实际视频PTS；T07 原生 stage。",
+      "produces": "GPU 内部 `lvm_stats_update(struct lvm_stage*, const struct lvm_input_frame*, const struct lvm_rect*, double)`；输出 StatsState（有效权重、log2均值、亮区比例、exposureEv、historyEpoch）由 RenderReceipt 低频回报。",
+      "scenario": "statistics",
+      "assertions": [
+        "assert r[\"outside_background_delta_ev\"] <= 0.05",
+        "assert r[\"inside_darkening_gain_responds\"]",
+        "assert r[\"steady_ev_change_per_second\"] <= 0.05",
+        "assert max(r[\"float_error_ev\"], r[\"packed_error_ev\"]) <= 0.05 and r[\"nonfinite_count\"] == 0"
+      ],
+      "implementation": "实现最长边64、另一边16–64的取样与分层归约，默认边界上下文权重0（仍满足规格≤10%）；区外黑白切换不得影响暗ROI。对数亮度范围初始化为[−16,0] EV；RGBA8后备用两通道16位规范编码，归约先解码再运算；不平均已编码字节。",
+      "wiring": "时间平滑使用实测视频时间差和0.4秒时间常数、同场景1EV/秒限速；镜头突变按分布与连续性判断，清除历史并0.15秒过渡。重复呈现同一PTS不推进历史；seek／文件／Surface／颜色／视口提交变更清历史。所有浮点格式做真实FBO测试，不凭扩展名称判断。",
+      "exit_gate": "E02 必须和 E03 成对通过；E08 两种格式各有数值参考和GPU输出，无浮点支持的设备只能报告受测后备，不虚报另一分支。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T09",
+      "title": "暗部降噪、局部提亮、高光与细节处理",
+      "phase": "M2",
+      "depends_on": [
+        "T08"
+      ],
+      "acceptance": [
+        "E01",
+        "E05",
+        "E06"
+      ],
+      "files": [
+        [
+          "新建",
+          "native-patches/mpv/0003-lvm-enhancement-pass.patch"
+        ],
+        [
+          "新建",
+          "shaders/lvm/illumination.glsl"
+        ],
+        [
+          "新建",
+          "shaders/lvm/denoise_tonemap.glsl"
+        ],
+        [
+          "新建",
+          "shaders/lvm/detail.glsl"
+        ],
+        [
+          "新建",
+          "qa/reference/enhancement_reference.py"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/EnhancementQualityScenario.kt"
+        ],
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "新建",
+          "qa/analyze_pixels.py"
+        ],
+        [
+          "补丁修改",
+          "buildscripts/deps/mpv/video/out/gpu/lvm_stage.c"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "已验证的区域统计、颜色转换条件及预编译变体。",
+      "produces": "`lvm_enhance_render(struct lvm_stage*, const struct lvm_input_frame*, const struct lvm_stats_state*, const struct lvm_params*)`；输出线性光计算后返回管线声明工作空间的纹理；原画变体严格恒等。",
+      "scenario": "enhancement_quality",
+      "assertions": [
+        "assert r[\"same_pts_same_view\"] and r[\"screen_brightness_unchanged\"]",
+        "assert r[\"normalized_noise_variance_reduction\"] >= 0.15",
+        "assert r[\"edge_contrast_retention\"] >= 0.90",
+        "assert r[\"additional_saturated_fraction\"] <= 0.005"
+      ],
+      "implementation": "实现≤256最长边照度纹理、3×3保边暗部降噪、线性光曝光和单调高光保护，再做门控细节增强；避免重复有限范围扩展。预设曝光上限原画0／自动2／弱光3／极弱光4／流畅2EV。 lvm_enhance_render的原生实现归入lvm_stage.c；qa/analyze_pixels.py在本任务创建，供后续集成复用。",
+      "wiring": "流畅档跳过邻域降噪和细节仍保留ROI统计提亮。工作纹理最长边≤1920，同时像素数≤1920×1080；竖屏交换长宽，方形等比限面积，保证预算不被方形素材绕过。RGBA8存储用已声明编码空间，不把暗部线性值直接8位截断；浮点路径预算单独计数。",
+      "exit_gate": "同帧灰阶、肤色、细线和噪声块联合验证，不能只因平均亮度上升而判通过。冻结可复现实验参数，真实微光画质还需T19。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T10",
+      "title": "增强面板、参数锁定、HDR 旁路与同视图对比",
+      "phase": "M2",
+      "depends_on": [
+        "T06",
+        "T09"
+      ],
+      "acceptance": [
+        "E04",
+        "E09"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/enhance/EnhancementController.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/enhance/EnhanceDefaults.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/ui/EnhancementPanel.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/EnhancementUiScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "实际 RenderReceipt、ViewportSnapshot、PlayerState 的输入颜色信息。",
+      "produces": "`EnhancementController.request(params: EnhanceParams): Unit`；`compareOriginal(enabled: Boolean): Unit`；`lockCurrent(enabled: Boolean): Unit`；`effectiveState(): EnhancementState`。",
+      "scenario": "enhancement_ui",
+      "assertions": [
+        "assert r[\"compare_preserves\"] == [\"pts\", \"viewport\", \"zoom\", \"subtitle_state\"]",
+        "assert r[\"hdr_sdr_stage_active\"] is False and r[\"hdr_reason_visible\"]",
+        "assert r[\"applied_label_requires_receipt\"]",
+        "assert r[\"locked_exposure_changed_by_quality_degrade\"] is False"
+      ],
+      "implementation": "实现五档及规格全部手调范围，区分请求值、回执生效值和不可用原因。总曝光夹紧0–4EV；曝光锁定来自最后有效GPU回执，按原生请求／确认双阶段冻结，不锁未来未知参数。 EnhanceDefaults.kt仅持有默认值与范围校验，复用T07的EnhanceParams；EnhancementState在Contracts.kt扩展。",
+      "wiring": "对比只旁路像素增强，不改变视口与播放位置；HDR按输入PQ／HLG或HDR元数据检测，不能因内核已转换SDR而误认源SDR。改变选区／媒体／颜色路径解除曝光锁定并提示；过热可减降噪，不偷改锁定曝光。首次加载失败、历史无有效回执或不支持效果时禁用对应控件。",
+      "exit_gate": "真实触控调整面板后像素或回执随之改变；HDR对比和锁定不篡改当前区域。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T11",
+      "title": "可调整触控选框、放大平移及区域增强联动",
+      "phase": "M2",
+      "depends_on": [
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T10"
+      ],
+      "acceptance": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "E02",
+        "E03"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/viewport/RoiOverlayView.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/viewport/RoiController.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/res/layout/panel_lvm_roi.xml"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/RoiTouchScenario.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "GestureRouter、ViewportController、EnhancementController、PlayerSession。",
+      "produces": "`RoiController.begin(): Unit`；`apply(): Result<ViewportSnapshot>`；`cancel(): Unit`；`reset(): Unit`；`onGesture(action: GestureAction): Unit`。",
+      "scenario": "roi_touch",
+      "assertions": [
+        "assert r[\"arm_only_on_button_tap\"] and r[\"apply_restores_prior_pause\"]",
+        "assert r[\"minimum_source_pixels\"] == [16, 16] and r[\"minimum_draw_dp\"] == [24, 24]",
+        "assert r[\"corner_resize_move_cancel_pass\"] and r[\"zoom_limits\"] == [1, 8]",
+        "assert r[\"after_pan_visible_rect\"] == r[\"after_pan_statistics_rect\"]"
+      ],
+      "implementation": "实现待画／绘制／四角调整／整框移动／应用／取消的可视选择页；初绘边长均≥24dp且源尺寸均≥16像素才可应用。操作从已放大视图进入时保留入口变换，取消还原，应用后恢复原暂停状态。",
+      "wiring": "手指操作通过统一逆矩阵更新快照；pinch焦点固定源像素，平移不调用快进或亮度音量逻辑。最终ROI取原始解码纹理，不先对全图降采样再裁剪。缩放连续更新统计域而不重编译shader，合并过时快照；旋转清手工选区、保留源方向含义。",
+      "exit_gate": "完成设备触控视频与同PTS像素记录；M2首个核心测试包必须真实具备“局部放大＋按局部增强”，不是只包含选框UI。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T12",
+      "title": "掉帧、热状态与增强资源自适应",
+      "phase": "M3",
+      "depends_on": [
+        "T03",
+        "T09",
+        "T10",
+        "T11"
+      ],
+      "acceptance": [
+        "F02",
+        "F03"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/performance/QualityGovernor.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/performance/PlaybackMetrics.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/performance/ThermalProbe.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/PerformancePolicyScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "内核帧计数、RenderReceipt／GPU计时可用性、可用的系统热状态。",
+      "produces": "`QualityGovernor.update(sample: PerformanceSample): QualityDecision`；`PlaybackMetrics.snapshot(): MetricsSnapshot`。",
+      "scenario": "performance_policy",
+      "assertions": [
+        "assert r[\"window_seconds\"] == 5 and r[\"bad_windows_to_degrade\"] == 2",
+        "assert r[\"drop_threshold\"] == 0.01 and r[\"min_change_interval_seconds\"] >= 10",
+        "assert r[\"stable_seconds_to_restore\"] >= 30 and r[\"restores_at_most_one_level\"]",
+        "assert r[\"gpu_budget_bytes\"] <= r[\"selected_budget_bytes\"] and r[\"missing_thermal\"] is None"
+      ],
+      "implementation": "实现规格降级顺序：关细节→降空间降噪→流畅→旁路；排除开播5秒、seek后2秒、暂停、缓冲及失焦，连续两个有效5秒窗口掉帧>1%才逐级改变。独立注入时间源用于确定性回归。",
+      "wiring": "GPU计时缺失、热接口缺失都用null／不可用。实际呈现无法可靠测量则F01对应指标标未测，不用UI刷新率充当视频帧率。计数器回绕／重置开始新窗口，不出现负掉帧。增强资源上限RGBA8约32MiB／浮点64MiB，统计、FBO和池也计入；不含解码器和系统总内存。",
+      "exit_gate": "策略模拟与设备真实负载分开留证；降级不改变视口／播放／音量；锁定曝光保持，稳定恢复只一级且不超过用户请求档。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T13",
+      "title": "微秒级 A／B 时间轴、边界预览与循环",
+      "phase": "M3",
+      "depends_on": [
+        "T03",
+        "T05",
+        "T06"
+      ],
+      "acceptance": [
+        "T01",
+        "T02",
+        "P05"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/clip/ClipController.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/clip/ClipRangePolicy.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/clip/ClipTimelineView.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/res/layout/panel_lvm_clip.xml"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/ClipTimelineScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "真实duration、PTS及seek回执；触点归属；当前轨道选择。",
+      "produces": "`ClipController.setRange(range: ClipRange): Result<Unit>`；`onHandle(which: ClipHandle, positionUs: Long, phase: DragPhase): Unit`；`setLoop(enabled: Boolean): Unit`；`request(mode: ExportMode): ExportRequest`。",
+      "scenario": "clip_timeline",
+      "assertions": [
+        "assert r[\"valid_range\"] and r[\"handles_never_cross\"]",
+        "assert r[\"position_storage_unit\"] == \"int64_us\" and r[\"long_duration_overflow\"] is False",
+        "assert r[\"loop_follows_range\"] and r[\"vfr_uses_actual_pts\"]",
+        "assert r[\"text_input_supported\"] and r[\"timeline_local_zoom_supported\"]",
+        "assert r[\"vfr_actual_pts_verified\"] and r[\"time_input_overflow_rejected\"]"
+      ],
+      "implementation": "独立播放进度条与剪辑区间轨道；A/B热区上下错位。合法区间严格0≤A<B≤duration；无时长禁用。长视频支持局部时间轴放大及HH:MM:SS.ffffff输入，不先转浮点秒再保存。 ClipRangePolicy.kt只负责区间验证和边界策略；ClipRange/ClipHandle/ExportMode/ExportRequest的值类型统一声明于Contracts.kt。",
+      "wiring": "手柄拖动暂停预览并沿用150ms合并；松手记录请求时间与实际帧时间。可在当前点设A/B，循环立即跟随区间；关闭循环清内核边界。导出请求冻结媒体代次、区间与轨道，不使用未来UI状态。",
+      "exit_gate": "实际触控拖动、键盘输入、短区间、长视频与VFR均检查；仅此任务完成还不能宣称导出可用。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T14",
+      "title": "FFmpeg 原生原码流剪辑与随机访问边界证明",
+      "phase": "M3",
+      "depends_on": [
+        "T02",
+        "T13"
+      ],
+      "acceptance": [
+        "T03",
+        "T04",
+        "T06",
+        "T07"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/export/StreamCopyExporter.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/jni/lumaview/export_bridge.cpp"
+        ],
+        [
+          "新建",
+          "app/src/main/jni/lumaview/stream_copy.cpp"
+        ],
+        [
+          "新建",
+          "app/src/main/jni/lumaview/random_access.cpp"
+        ],
+        [
+          "修改",
+          "app/src/main/jni/Android.mk"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/StreamCopyScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "新建",
+          "qa/verify_packets.py"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "ReadLease、ExportRequest（明确选中轨道）以及固定FFmpeg原生库。",
+      "produces": "`StreamCopyExporter.analyze(input: ReadLease, request: ExportRequest, reply: (Result<CopyPlan>) -> Unit): Long`；`write(input: ReadLease, plan: CopyPlan, temp: File, listener: (ExportEvent) -> Unit): ExportJobId`；`cancel(id: ExportJobId): Unit`。",
+      "scenario": "stream_copy",
+      "assertions": [
+        "assert r[\"copied_video_packets\"] > 0 and r[\"same_container_payload_matches\"] == r[\"copied_video_packets\"]",
+        "assert r[\"full_output_decode_errors\"] == 0 and r[\"added_av_offset_ms\"] <= 40",
+        "assert r[\"unsafe_open_gop_claimed_safe\"] is False",
+        "assert r[\"unretained_tracks_disclosed\"] and r[\"source_hash_unchanged\"]"
+      ],
+      "implementation": "为导出重新打开独立FD与解复用上下文，不dup后共享文件偏移；验证读权限并用AVIO受控读。对H.264/HEVC显式解析随机访问单元与配置，首版安全边界优先IDR；开放GOP/CRA等无法证明可独立启动时拒绝“安全无损”结论。",
+      "wiring": "CopyPlan回报请求A、实际A′、B、前滚、选中流及不支持项；同容器优先并分别声明容器支持。使用共同时间基准平移PTS/DTS；末尾保留解码依赖，记录实际区间。JPEG封面/附件不混作视频轨。完整解码及负载哈希在测试验证器中运行，不能用重新编码保持码率假冒复制。 写入API显式接收本任务独立ReadLease，CopyPlan不隐藏FD或依赖分析器继续存活；write拥有该lease直到完成或取消，分析阶段仅借用、不会关闭它。",
+      "exit_gate": "H.264和HEVC同容器逐包核对；跨容器转换另报码流表示转换，不能套用原始字节一致结论。生产导出不要求逐包hash导致UI或导出额外全片阻塞。",
+      "risk": "文件fd seek共享、错误把mpv轨道ID当FFmpeg索引、开放GOP假关键帧，均作为本任务负例；T07中的C/C++链接与本桥接应共用同一FFmpeg构建，避免双份符号。",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T15",
+      "title": "Transformer 精确剪辑与所选轨道映射",
+      "phase": "M3",
+      "depends_on": [
+        "T02",
+        "T03",
+        "T13",
+        "T14"
+      ],
+      "acceptance": [
+        "T05",
+        "T06",
+        "T07"
+      ],
+      "files": [
+        [
+          "修改",
+          "app/build.gradle"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/export/ExactExporter.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/export/ForceEncodingFactory.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/export/SelectedInputResolver.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/ExactExportScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "ExportRequest、ReadLease、真实轨道映射；T14提供仅在必要时使用的所选流暂存重封装。",
+      "produces": "`SelectedInputResolver.resolve(input: ReadLease, request: ExportRequest, reply: (Result<PreparedInput>) -> Unit): Long`；`ExactExporter.write(input: PreparedInput, request: ExportRequest, temp: File, listener: (ExportEvent) -> Unit): ExportJobId`；`cancel(id: ExportJobId): Unit`。",
+      "scenario": "exact_export",
+      "assertions": [
+        "assert r[\"first_frame_error_frames\"] <= 1 and r[\"last_frame_error_frames\"] <= 1",
+        "assert abs(r[\"added_av_offset_ms\"]) <= 40 and r[\"removed_preroll_visible_frames\"] == 0",
+        "assert r[\"actual_video_codec\"] == \"video/avc\" and r[\"video_process\"] == \"ENCODE\"",
+        "assert r[\"mp4_edit_list_trim_enabled\"] is False and r[\"requested_tracks_match_output\"]"
+      ],
+      "implementation": "所有Media3模块固定1.11.1；用该版本实际存在的setStartPositionUs/setEndPositionUs传递微秒边界。包装EncoderFactory，使videoNeedsEncoding/audioNeedsEncoding返回所需策略并记录实际编码器；关闭编辑列表trim和拼接优化，精确模式首版统一H.264/AAC重编码，无音频则纯视频。[R5–R7]",
+      "wiring": "单一合适视频／音轨直接输入；多轨且不能验证Transformer选中映射时，先经FFmpeg只暂存所选流并记录统一时间偏移，不让它默认选错轨。该暂存成本在确认页显示，并征求空间／耗时同意；这不是每次播放默认复制全片。使用同一Looper管理Transformer，后台工作不让UI转码；开始前释放／暂停预览的硬解资源，完成才重新获取。",
+      "exit_gate": "用帧号与PTS标签验证首末实际画面，不仅检查容器时长。SDR、无声、两音轨、非零起始PTS、VFR分别通过；HDR／编码能力不足明确拒绝或用户确认后降分辨率，不静默降画质。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T16",
+      "title": "安全输出提交、取消与可恢复失败",
+      "phase": "M3",
+      "depends_on": [
+        "T02",
+        "T14",
+        "T15"
+      ],
+      "acceptance": [
+        "S02",
+        "S03",
+        "F03"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/export/ExportCoordinator.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/storage/OutputTransaction.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/ui/ExportConfirmationPanel.kt"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/OutputTransactionScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/storage/DocumentAccess.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "CopyPlan／PreparedInput／ExportEvent；用户通过系统选择器创建的新文件；只读源身份。",
+      "produces": "`OutputTransaction.commitNew(temp: File, ticket: NewDocumentTicket, source: DocumentIdentity, reply: (Result<CommitReceipt>) -> Unit): Long`；`ExportCoordinator.cancel(jobId: ExportJobId): Unit`。 `DocumentAccess.createNewDocument(jobId: ExportJobId, suggestedName: String, mime: String, reply: (Result<NewDocumentTicket>) -> Unit): Long`；`ExportCoordinator.start(request: ExportRequest): ExportJobId`；`observe(jobId: ExportJobId, listener: (ExportEvent) -> Unit): AutoCloseable`。",
+      "scenario": "output_transaction",
+      "assertions": [
+        "assert r[\"active_export_jobs_max\"] == 1",
+        "assert r[\"same_document_via_alias_write_attempts\"] == 0 and r[\"source_hash_unchanged\"]",
+        "assert r[\"diskfull_retry_succeeds\"] and r[\"cancel_releases_resources\"]",
+        "assert r[\"residual_files\"] == r[\"disclosed_residual_files\"]"
+      ],
+      "implementation": "输出状态固定分析→确认→私有暂存→收尾校验→外部提交→完成；外部提交完成前不显示100%已完成。只允许本任务创建的新文档凭据，比较authority/documentId与可取身份；身份不清拒绝覆盖式写入，URI字符串不同不是安全证明。",
+      "wiring": "取消既覆盖转码也覆盖外部复制；只删除本任务创建的暂存及半成品，失败给出残留URI。断电／强停不能执行取消回调，重启扫描私有任务日志并展示中断状态。首测试版退后台安全取消，选择器／本应用确认页不视为用户离开；不承诺后台不中断。所有出口恢复可再导出的状态。",
+      "exit_gate": "磁盘不足、撤权、外置存储断开、提供方新URI别名、重复输出、写失败后重试都不破坏源文件；触控选择的区间通过两条导出路径真正保存。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T17",
+      "title": "无控件截图、诊断信息与本地隐私检查",
+      "phase": "M4",
+      "depends_on": [
+        "T02",
+        "T03",
+        "T06",
+        "T07",
+        "T10",
+        "T11",
+        "T16"
+      ],
+      "acceptance": [
+        "S04",
+        "C02"
+      ],
+      "files": [
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/capture/ScreenshotController.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/diagnostics/DiagnosticExporter.kt"
+        ],
+        [
+          "新建",
+          "app/src/main/java/org/lumaview/mobile/security/IntentPolicy.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/AndroidManifest.xml"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/PrivacyCaptureScenario.kt"
+        ],
+        [
+          "修改",
+          "app/src/main/java/org/lumaview/mobile/model/Contracts.kt"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "当前帧 RenderReceipt、选区、字幕状态；任务诊断和DocumentAccess。",
+      "produces": "`ScreenshotController.capture(includeSubtitles: Boolean, reply: (Result<CaptureResult>) -> Unit): Long`；`DiagnosticExporter.writeRedacted(destination: NewDocumentTicket): Long`；`IntentPolicy.accept(intent: Intent): Result<Uri>`。",
+      "scenario": "privacy_capture",
+      "assertions": [
+        "assert r[\"screenshot_contains_controls\"] is False and r[\"screenshot_pts_matches_receipt\"]",
+        "assert r[\"automatic_network_requests\"] == 0 and r[\"external_script_executions\"] == 0",
+        "assert r[\"unrequested_sensitive_permissions\"] == [] and r[\"external_command_injection_rejected\"]",
+        "assert r[\"diagnostic_contains_private_uri_or_unique_device_id\"] is False"
+      ],
+      "implementation": "显式截图从视频渲染层获取当前增强／ROI后的像素，默认不含控件；字幕开关和保存内容在提示中说明。仅显式截图允许整帧回读，工作线程编码PNG并经新文件事务写出。",
+      "wiring": "诊断默认脱敏文件名、URI、路径与序列号，保留API、ABI、GPU、输入色彩和生效状态。去除INTERNET及摄像头、麦克风、所有文件访问、无障碍、悬浮权限；控制Intent协议与长度，只接受授权媒体URI，不接受额外mpv命令。禁止目录auto-load脚本和远程协议；系统提供方自有行为与应用自动请求分开记录。",
+      "exit_gate": "无网络／无Google登录核心流程可执行；权限静态检查与动态网络观察分别有记录，不把截图背光变化作为像素增强证据。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T18",
+      "title": "整机流程回归与可复现证据归档",
+      "phase": "M4",
+      "depends_on": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14",
+        "T15",
+        "T16",
+        "T17"
+      ],
+      "acceptance": [
+        "C01",
+        "P01",
+        "P02",
+        "P03",
+        "P04",
+        "P05",
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "E01",
+        "E02",
+        "E03",
+        "E04",
+        "E05",
+        "E06",
+        "E07",
+        "E08",
+        "E09",
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "F02",
+        "F03"
+      ],
+      "files": [
+        [
+          "修改",
+          "qa/generate_fixtures.py"
+        ],
+        [
+          "修改",
+          "qa/analyze_pixels.py"
+        ],
+        [
+          "修改",
+          "qa/verify_packets.py"
+        ],
+        [
+          "新建",
+          "qa/run_android_suite.py"
+        ],
+        [
+          "新建",
+          "qa/report.py"
+        ],
+        [
+          "新建",
+          "app/src/androidTest/java/org/lumaview/mobile/scenarios/EndToEndScenario.kt"
+        ],
+        [
+          "修改",
+          "qa/fixtures.json"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "T01 测试驱动协议及T02–T17真实功能探针；本计划38项清单。",
+      "produces": "`python qa/run_android_suite.py --serial <device> --abi arm64-v8a --out <run_dir>`；`python qa/report.py --run <run_dir>`，输出 per-case 状态，不从日志出现PASS字符串推断整套通过。",
+      "scenario": "integration",
+      "assertions": [
+        "assert r[\"required_criteria_registered\"] == 38",
+        "assert r[\"pass_without_evidence\"] == [] and r[\"stale_build_evidence\"] == []",
+        "assert r[\"touch_sequences_replayed\"] > 0 and r[\"golden_frame_only_ui_mock\"] is False",
+        "assert r[\"device_environment_recorded\"] and r[\"retained_failure_records\"]"
+      ],
+      "implementation": "复用前置任务已生成的固定种子的灰阶／彩色块／噪声／帧号／声画脉冲／固定ROI与变化背景素材，记录命令及hash；增加VFR、非零PTS、开放GOP、异常容器和特殊SAR组。真实触控必须从系统注入序列进入View，不直接调用按钮回调当成触控测试。",
+      "wiring": "像素分析按同PTS同视图、同色彩空间对齐；掉帧和时域统计读真实回执。每次记录APK／补丁／素材hash、设备环境、raw数据和计算脚本；错误和不利结果保留。无设备用BLOCKED，不通过跳过设备测试获得全绿报告。 原始素材生成、像素分析与包验证脚本在T01/T08/T09/T14已分别落地，本任务补齐端到端调度和缺失覆盖，不引入前向测试依赖。",
+      "exit_gate": "形成“已验证功能／失败／未跑／受阻”四分表。模拟器ARM64、x86_64和物理ARM64结果分开；本任务不替代Mate 20 X长测及真实微光评估。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T19",
+      "title": "Mate 20 X 实物素材与持续性能验收",
+      "phase": "M4",
+      "depends_on": [
+        "T18"
+      ],
+      "acceptance": [
+        "C02",
+        "P03",
+        "E10",
+        "F01",
+        "F02",
+        "F03"
+      ],
+      "files": [
+        [
+          "新建",
+          "qa/device_profiles/mate20x-harmony4.json"
+        ],
+        [
+          "新建",
+          "qa/run_soak.py"
+        ],
+        [
+          "新建",
+          "qa/real_lowlight_manifest.json"
+        ],
+        [
+          "新建",
+          "docs/implementation/target-device-runbook.md"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "目标手机实际诊断；可复现APK；获授权的四类真实微光视频；T18基准结果。",
+      "produces": "`python qa/run_soak.py --serial <device> --profile qa/device_profiles/mate20x-harmony4.json --mode original|auto|roi --minutes 20 --out <run_dir>`。",
+      "scenario": "target_device",
+      "assertions": [
+        "assert r[\"is_physical_arm64\"] and r[\"google_login_required\"] is False",
+        "assert r[\"modes\"] == [\"original\", \"auto\", \"roi\"] and r[\"minutes_per_mode\"] >= 20",
+        "assert r[\"effective_drop_ratio\"] <= 0.01 and r[\"max_nonbuffer_stall_s\"] <= 0.5 and r[\"anr_count\"] == 0",
+        "assert r[\"lowlight_categories_reviewed\"] == 4 and r[\"tail_interval_reported\"]",
+        "assert r[\"requested_mode_downgrade_disclosed\"] and r[\"audio_listening_recorded\"]"
+      ],
+      "implementation": "按设备实际API／GPU建档，不以HarmonyOS版本猜API。1080p30 SDR在原画、自动、选区增强各连续20分钟；固定背光与播放音量，记录环境温度、充电状态、可取热状态、有效窗口与最后5分钟。",
+      "wiring": "四类真实素材为室内暗光、路灯高反差、人物运动、细文字；固定相同PTS对照并人工观察噪声、细节、光晕、颜色。没有配对真值不得算真实画面PSNR。GPU计时可靠时单报增强P50/P95，P95≤8ms为调校目标，否则null。1080p60和4K另列能力实验，不改变首验口径。",
+      "exit_gate": "目标机不在可用环境时本任务BLOCKED并提供用户本地执行说明，绝不声称远程访问了用户手机。听音、真实素材和长测分别签认；未达标明确不通过，不靠隐藏自动降级掩盖请求档未达标。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "T20",
+      "title": "发布门禁、签名、源码一致性与完整测试包",
+      "phase": "M5",
+      "depends_on": [
+        "T18",
+        "T19"
+      ],
+      "acceptance": [
+        "C01",
+        "C03",
+        "S04"
+      ],
+      "files": [
+        [
+          "新建",
+          "buildscripts/lvm-package.sh"
+        ],
+        [
+          "新建",
+          "qa/release_gate.py"
+        ],
+        [
+          "新建",
+          "docs/implementation/mobile-user-guide.md"
+        ],
+        [
+          "新建",
+          "licenses/THIRD_PARTY_NOTICES.md"
+        ],
+        [
+          "新建",
+          "release/release-manifest.json"
+        ],
+        [
+          "修改",
+          "qa/cases.json"
+        ]
+      ],
+      "consumes": "全部实现提交、依赖源码和patch、逐项真实验收；签名证书公共信息。",
+      "produces": "`buildscripts/lvm-package.sh --channel test|validated --run <run_dir>`；输出APK＋对应源码＋native补丁＋说明＋逐项结果＋SHA256。",
+      "scenario": "release_gate",
+      "assertions": [
+        "assert r[\"validated_with_blocked_or_failed_required_case\"] is False",
+        "assert r[\"native_sources_and_patches_rebuildable\"] and r[\"package_checksums_match\"]",
+        "assert r[\"private_keys_in_bundle\"] == 0 and r[\"user_media_in_bundle\"] == 0",
+        "assert r[\"elf_alignment_checked\"] and r[\"apk_zip_alignment_checked\"]"
+      ],
+      "implementation": "再次干净构建并做ELF、ZIP对齐、ABI、安装包签名校验；检测原生资源页大小假设。默认test渠道允许明确列出BLOCKED的受限测试包；validated渠道要求38项在所声明设备／能力范围内全部满足，缺测不得放行。",
+      "wiring": "首测试版versionName `0.1.0-test`，独立递增versionCode；测试签名证书摘要公开、私钥受保护且不进源码。保留上游许可、全部新增／修改源文件、原生patch和依赖锁，不交只有壳的“完整源码”。只把真实产物的字节hash写清单，更新说明不得从本计划复制通过结论。",
+      "exit_gate": "交付APK、源码、构建方式、中文说明和逐项验证。T19受阻时仅可创建“未完成目标真机验收”的测试包，不能叫最终兼容认证版；这是一条显式受限发布路径，不把T19标完成。",
+      "risk": "",
+      "status": "NOT_STARTED"
+    }
+  ]
+}

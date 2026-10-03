@@ -1,0 +1,131 @@
+{
+  "scope": "PLAN_DOCUMENTS_ONLY",
+  "result": "VALID",
+  "generated_at_utc": "2026-10-03T09:42:48.340653+00:00",
+  "checks": [
+    {
+      "check": "twenty_unique_tasks",
+      "ok": true,
+      "detail": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14",
+        "T15",
+        "T16",
+        "T17",
+        "T18",
+        "T19",
+        "T20"
+      ]
+    },
+    {
+      "check": "five_phases",
+      "ok": true,
+      "detail": [
+        "M1",
+        "M2",
+        "M3",
+        "M4",
+        "M5"
+      ]
+    },
+    {
+      "check": "dependency_graph_topological_no_cycles",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "38_criteria_preserve_approved_text",
+      "ok": true,
+      "detail": 38
+    },
+    {
+      "check": "every_criterion_has_mapped_owner_and_support",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "all_work_and_test_states_unexecuted",
+      "ok": true,
+      "detail": {
+        "tasks": 20,
+        "criteria": 38
+      }
+    },
+    {
+      "check": "approved_spec_bytes_match_hash",
+      "ok": true,
+      "detail": "8e28d31802bbdb7d47d9507fc046632da43b6df69b2ebc801f8d0aefb176499e"
+    },
+    {
+      "check": "approval_not_expanded_to_execution",
+      "ok": true,
+      "detail": "NOT_STARTED"
+    },
+    {
+      "check": "task_register_matches_markdown_headings",
+      "ok": true,
+      "detail": 20
+    },
+    {
+      "check": "120_checklist_steps_and_exact_file_paths",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "20_test_example_blocks_syntactically_valid",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "no_duplicate_new_file_ownership",
+      "ok": true,
+      "detail": {
+        "new_file_count": 108,
+        "conflicts": []
+      }
+    },
+    {
+      "check": "referenced_companion_documents_exist",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "standalone_html_anchors_resolve",
+      "ok": true,
+      "detail": {
+        "broken": [],
+        "anchor_count": 26
+      }
+    },
+    {
+      "check": "html_no_remote_assets",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "no_binaries_fonts_or_keys_in_plan_package",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "no_vague_unresolved_placeholders",
+      "ok": true,
+      "detail": []
+    }
+  ],
+  "apk_build_executed": false,
+  "mobile_tests_executed": false,
+  "warning": "文档检查结果，不是应用编译、触控、画质或真机性能验收。"
+}

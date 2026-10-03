@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "T01-checkpoint-01",
+  "updatedAt": "2026-10-03T10:07:17.945625+00:00",
+  "scope": "executed host tooling only; no complete Android project, APK, native compilation or device tests",
+  "hostTests": {
+    "passed": 93,
+    "failed": 0,
+    "scope": "qa/tests"
+  },
+  "fullSuite": {
+    "passed": 93,
+    "failed": 1,
+    "blockedTest": "qa/cases/test_t01.py::test_baseline",
+    "reason": "APK_NOT_BUILT"
+  },
+  "apk": null,
+  "remoteWrites": false,
+  "remoteBuilds": false,
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "固定源码、最小测试基础与可构建安装包",
+      "status": "BLOCKED",
+      "reason": "Full pinned source and Android toolchain unavailable; host subunits tested"
+    },
+    {
+      "id": "T02",
+      "title": "SAF 文件访问、文件页与只读输入租约",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T03",
+      "title": "播放会话、异步代次与 Surface 安全生命周期",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T04",
+      "title": "源视频坐标与统一视口数学",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T05",
+      "title": "手势优先级与触点唯一所有权",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T06",
+      "title": "可见播放控制、慢速、音量、轨道与横竖屏布局",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T07",
+      "title": "原生 GPU 扩展、快照提交与实际应用回执",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T08",
+      "title": "选区亮度统计、数值编码与曝光时间稳定",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T09",
+      "title": "暗部降噪、局部提亮、高光与细节处理",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T10",
+      "title": "增强面板、参数锁定、HDR 旁路与同视图对比",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T11",
+      "title": "可调整触控选框、放大平移及区域增强联动",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T12",
+      "title": "掉帧、热状态与增强资源自适应",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T13",
+      "title": "微秒级 A／B 时间轴、边界预览与循环",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T14",
+      "title": "FFmpeg 原生原码流剪辑与随机访问边界证明",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T15",
+      "title": "Transformer 精确剪辑与所选轨道映射",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T16",
+      "title": "安全输出提交、取消与可恢复失败",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T17",
+      "title": "无控件截图、诊断信息与本地隐私检查",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T18",
+      "title": "整机流程回归与可复现证据归档",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T19",
+      "title": "Mate 20 X 实物素材与持续性能验收",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    },
+    {
+      "id": "T20",
+      "title": "发布门禁、签名、源码一致性与完整测试包",
+      "status": "NOT_STARTED",
+      "reason": "Preceding implementation not completed"
+    }
+  ],
+  "blockers": [
+    {
+      "code": "HOST_TOOL_MISSING",
+      "detail": "meson"
+    },
+    {
+      "code": "HOST_TOOL_MISSING",
+      "detail": "nasm"
+    },
+    {
+      "code": "SDK_PLATFORM_MISSING",
+      "detail": "Android platform 36"
+    },
+    {
+      "code": "SDK_BUILD_TOOL_MISSING",
+      "detail": "36.0.0/aapt2"
+    },
+    {
+      "code": "SDK_BUILD_TOOL_MISSING",
+      "detail": "36.0.0/zipalign"
+    },
+    {
+      "code": "SDK_BUILD_TOOL_MISSING",
+      "detail": "36.0.0/apksigner"
+    },
+    {
+      "code": "NDK_MISSING",
+      "detail": "30.0.16248370"
+    },
+    {
+      "code": "SOURCE_TREE_MISSING",
+      "detail": "The complete pinned upstream checkout is required; vendor-reference is not a checkout."
+    },
+    {
+      "code": "SOURCE_COMMIT_UNVERIFIED",
+      "detail": "No verified full source checkout at the expected commit."
+    },
+    {
+      "code": "UNRESOLVED_LOCK",
+      "detail": "SDK/NDK archive hashes; native versioned-source archive hashes; freetype and libplacebo submodule commits; host build dependency versions; Gradle/Maven artifact checksums"
+    },
+    {
+      "code": "SOURCE_ARCHIVE_HASH_MISSING",
+      "detail": "mpv-android"
+    },
+    {
+      "code": "SOURCE_ARCHIVE_HASH_MISSING",
+      "detail": "mpv"
+    },
+    {
+      "code": "SOURCE_ARCHIVE_HASH_MISSING",
+      "detail": "ffmpeg"
+    },
+    {
+      "code": "SOURCE_ARCHIVE_HASH_MISSING",
+      "detail": "dav1d"
+    },
+    {
+      "code": "SOURCE_ARCHIVE_HASH_MISSING",
+      "detail": "libass"
+    },
+    {
+      "code": "SOURCE_ARCHIVE_HASH_MISSING",
+      "detail": "libplacebo"
+    },
+    {
+      "code": "NATIVE_BUILD_INTEGRATION_PENDING",
+      "detail": "This T01 checkpoint implements prerequisite checks only; no Gradle/native build driver or mobile app is claimed."
+    }
+  ],
+  "sourceAcquisition": {
+    "status": "BLOCKED",
+    "observed": null,
+    "reason": "SOURCE_COMMAND_FAILED: fetch",
+    "scope": "source acquisition, not Android build",
+    "sourceUrl": "https://github.com/mpv-android/mpv-android.git",
+    "expectedCommit": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
+    "startedAt": "2026-10-03T10:04:50.244101+00:00",
+    "finishedAt": "2026-10-03T10:04:50.268268+00:00"
+  },
+  "nextTask": "T01",
+  "nextInput": "Independent project-specific Linux build workspace; for GitHub, an authorized mobile repository and explicit push/Actions permission."
+}
