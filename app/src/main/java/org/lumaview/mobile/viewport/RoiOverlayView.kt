@@ -35,8 +35,11 @@ class RoiOverlayView(context:Context):View(context) {
    current=if(relative<=1.001)null else next;onViewport(current);owner="pinch";changed=true;return true
   }
  })
+ private fun finishSeek(){
+  if(owner=="seek"){owner="";onSeek((prevX-startX)/width.coerceAtLeast(1),true)}
+ }
  fun begin(){if(locked)return;selecting=true;selection=null;owner="";activeId=-1;onSelection(false);invalidate()}
- fun cancel(){selecting=false;selection=null;owner="";activeId=-1;invalidate()}
+ fun cancel(){finishSeek();selecting=false;selection=null;owner="";activeId=-1;invalidate()}
  fun apply():RoiRect? {val r=selection?.takeIf{it.valid()}?:return null;selecting=false;current=r;selection=null;invalidate();return r}
  override fun onDraw(c:Canvas){super.onDraw(c)
   if(!selecting)return
@@ -54,8 +57,10 @@ class RoiOverlayView(context:Context):View(context) {
  override fun onTouchEvent(e:MotionEvent):Boolean {
   if(locked){if(e.actionMasked==MotionEvent.ACTION_UP)onTap();return true}
   val m=math?:return true
+  // Terminate a captured scrub before ScaleGestureDetector can take its ownership.
+  if(e.actionMasked==MotionEvent.ACTION_CANCEL||e.actionMasked==MotionEvent.ACTION_POINTER_DOWN||e.actionMasked==MotionEvent.ACTION_POINTER_UP)finishSeek()
   if(!selecting)pinch.onTouchEvent(e)
-  if(e.actionMasked==MotionEvent.ACTION_CANCEL){owner="";activeId=-1;return true}
+  if(e.actionMasked==MotionEvent.ACTION_CANCEL){owner="";activeId=-1;parent?.requestDisallowInterceptTouchEvent(false);return true}
   if(e.actionMasked==MotionEvent.ACTION_POINTER_DOWN){owner="pinch";return true}
   if(e.actionMasked==MotionEvent.ACTION_POINTER_UP){activeId=-1;owner="pinch";return true}
   when(e.actionMasked){
@@ -70,7 +75,7 @@ class RoiOverlayView(context:Context):View(context) {
    }
    MotionEvent.ACTION_MOVE->{
     if(e.pointerCount>1||pinch.isInProgress||activeId<0||owner=="pinch")return true
-    val index=e.findPointerIndex(activeId);if(index<0){owner="";return true};val x=e.getX(index);val y=e.getY(index)
+    val index=e.findPointerIndex(activeId);if(index<0){finishSeek();owner="";activeId=-1;return true};val x=e.getX(index);val y=e.getY(index)
     if(hypot((x-startX).toDouble(),(y-startY).toDouble())>6*dp)changed=true
     if(selecting){
      if(owner=="draw")selection=m.select(startX.toDouble(),startY.toDouble(),x.toDouble(),y.toDouble(),24.0*dp)
@@ -96,7 +101,7 @@ class RoiOverlayView(context:Context):View(context) {
     if(!selecting&&!changed&&owner!="pinch"){
      if(e.eventTime-lastUp<300){onDouble(e.x<width/2);lastUp=0}else {onTap();lastUp=e.eventTime}
     }
-    owner="";activeId=-1;performClick()
+    owner="";activeId=-1;parent?.requestDisallowInterceptTouchEvent(false);performClick()
    }
   };return true
  }
