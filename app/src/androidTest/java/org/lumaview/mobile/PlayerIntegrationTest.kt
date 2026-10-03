@@ -124,6 +124,9 @@ class PlayerIntegrationTest {
   activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
   try{
    waitFor("progress playback"){(session.state.positionUs?:0)>1_000_000&&session.state.durationUs!=null}
+   // Keep the measured row visible through the application's real menu;
+   // normal auto-hide may otherwise occur between the two screenshots.
+   tap("更多");val visible=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("控制栏常显／自动隐藏");assertTrue(visible.isNotEmpty());assertTrue(visible[0].performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(300)
    inst.runOnMainSync{
     val bar=value("seek") as SeekBar;val previous=bar.progress;assertTrue(previous>0)
     activity.javaClass.getDeclaredMethod("render",org.lumaview.mobile.player.PlayerState::class.java).apply{isAccessible=true}.invoke(activity,session.state.copy(positionUs=null))
