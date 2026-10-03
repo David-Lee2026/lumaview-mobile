@@ -30,7 +30,8 @@ class PlaybackTest {
         val width=MPVLib.getPropertyInt("video-params/w")!!
         MPVLib.setPropertyBoolean("pause",true);waitFor("pause was not applied"){MPVLib.getPropertyBoolean("pause")==true}
         val stopped=MPVLib.getPropertyDouble("time-pos")!!;SystemClock.sleep(350)
-        assertEquals(stopped,MPVLib.getPropertyDouble("time-pos")!!,0.12)
+        val afterPause=MPVLib.getPropertyDouble("time-pos")!!
+        assertEquals(stopped,afterPause,0.12)
         MPVLib.setPropertyDouble("speed",.25);assertEquals(.25,MPVLib.getPropertyDouble("speed")!!,0.001)
         MPVLib.command(arrayOf("seek","1","absolute+exact"));waitFor("exact seek not applied"){kotlin.math.abs((MPVLib.getPropertyDouble("time-pos")?:0.0)-1)<.15}
         val root=activity.window.decorView
@@ -43,7 +44,7 @@ class PlaybackTest {
         val old=mean(before);val enhanced=mean(after);assertTrue("GPU pixel enhancement did not brighten the dark fixture: $old -> $enhanced",enhanced>old+5)
         MPVLib.setPropertyString("video-crop","320x180+160+90");SystemClock.sleep(300);val crop=MPVLib.getPropertyString("video-crop");assertTrue(crop?.contains("320x180")==true)
         MPVLib.setPropertyDouble("speed",2.0);assertEquals(2.0,MPVLib.getPropertyDouble("speed")!!,0.001)
-        val report=JSONObject().put("physicalOrEmulator","emulator").put("api",android.os.Build.VERSION.SDK_INT).put("abi",android.os.Build.SUPPORTED_ABIS.joinToString()).put("nativeDecodedWidth",width).put("pauseStable",kotlin.math.abs(stopped-(stopped))<.12).put("originalMean",old).put("enhancedMean",enhanced).put("crop",crop).put("huaweiPhysicalValidation","NOT_RUN")
+        val report=JSONObject().put("physicalOrEmulator","emulator").put("api",android.os.Build.VERSION.SDK_INT).put("abi",android.os.Build.SUPPORTED_ABIS.joinToString()).put("nativeDecodedWidth",width).put("pauseStable",kotlin.math.abs(stopped-afterPause)<.12).put("originalMean",old).put("enhancedMean",enhanced).put("crop",crop).put("huaweiPhysicalValidation","NOT_RUN")
         File(ctx.filesDir,"playback-evidence.json").writeText(report.toString(2))
         ins.runOnMainSync{activity.finish()}
     }

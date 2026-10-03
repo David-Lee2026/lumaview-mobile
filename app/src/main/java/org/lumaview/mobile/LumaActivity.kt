@@ -25,6 +25,7 @@ class LumaActivity:Activity() {
     private lateinit var overlay:RoiOverlay
     private lateinit var status:TextView
     private lateinit var seek:SeekBar
+    private lateinit var clipTimeline:ClipTimelineView
     private lateinit var clipText:TextView
     private lateinit var play:Button
     private lateinit var videoBox:FrameLayout
@@ -67,6 +68,7 @@ class LumaActivity:Activity() {
                 if(!dragging)seek.progress=durationUs?.let{((positionUs.toDouble()/it)*10000).toInt().coerceIn(0,10000)}?:0
                 if(b==0L&&durationUs!=null)b=durationUs!!
                 clipText.text="A ${time(a)}  →  B ${time(b)}${if(looping)" · 循环" else ""}"
+                clipTimeline.durationUs=durationUs?:0;clipTimeline.startUs=a;clipTimeline.endUs=b;clipTimeline.positionUs=positionUs;clipTimeline.invalidate()
             }}
         }};ui.postDelayed(this,250)}
     }
@@ -95,7 +97,8 @@ class LumaActivity:Activity() {
         row(root,button("打开"){pick()},button("文件夹"){startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION),11)},button("−10秒"){seekTo((positionUs-10_000_000).coerceAtLeast(0),true)},play,button("+30秒"){seekTo(positionUs+30_000_000,true)},button("倍速"){speedDialog()},button("音量"){volumeDialog()})
         row(root,button("区域放大"){armRoi()},button("应用选区"){applyRoi()},button("取消选区"){cancelRoi()},button("全画面"){resetView()},button("＋缩放"){setZoom(zoom+.5)},button("−缩放"){setZoom(zoom-.5)},button("增强"){enhanceDialog()},button("对比原画"){compare=!compare;applyEnhance()})
         clipText=TextView(this).apply{setTextColor(0xffb4d8ff.toInt());setPadding(dp(12),0,0,0)};root.addView(clipText)
-        row(root,button("设A"){if(positionUs<b){a=positionUs}else message("A必须早于B")},button("设B"){if(positionUs>a){b=positionUs}else message("B必须晚于A")},button("时间输入"){clipDialog()},button("预览A"){preview(a)},button("预览B"){preview((b-1).coerceAtLeast(a))},button("循环A/B"){looping=!looping;cmd{MPVLib.setPropertyDouble("ab-loop-a",if(looping)a/1e6 else -1.0);MPVLib.setPropertyDouble("ab-loop-b",if(looping)b/1e6 else -1.0)}},button("导出片段"){exportDialog()},button("取消导出"){cancelExport()})
+        clipTimeline=ClipTimelineView(this);clipTimeline.contentDescription="剪辑A/B双手柄时间轴";clipTimeline.onRange={aa,bb->a=aa;b=bb;if(looping){looping=false;cmd{MPVLib.setPropertyString("ab-loop-a","no");MPVLib.setPropertyString("ab-loop-b","no")}}};root.addView(clipTimeline,LinearLayout.LayoutParams(-1,dp(64)))
+        row(root,button("设A"){if(positionUs<b){a=positionUs}else message("A必须早于B")},button("设B"){if(positionUs>a){b=positionUs}else message("B必须晚于A")},button("时间输入"){clipDialog()},button("预览A"){preview(a)},button("预览B"){preview((b-1).coerceAtLeast(a))},button("循环A/B"){looping=!looping;cmd{MPVLib.setPropertyString("ab-loop-a",if(looping)(a/1e6).toString() else "no");MPVLib.setPropertyString("ab-loop-b",if(looping)(b/1e6).toString() else "no")}},button("导出片段"){exportDialog()},button("取消导出"){cancelExport()})
         row(root,button("旋转90°"){userRotation=(userRotation+90)%360;epoch++;locked=false;cmd{MPVLib.setPropertyInt("video-rotate",userRotation)};applyEnhance()},button("方向锁"){requestedOrientation=if(requestedOrientation==ActivityInfo.SCREEN_ORIENTATION_LOCKED)ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED else ActivityInfo.SCREEN_ORIENTATION_LOCKED},button("字幕/音轨"){trackDialog()},button("屏幕亮度"){brightnessDialog()},button("截图"){capture()},button("最近播放"){recent()},button("诊断"){diagnostics()})
         overlay.onPan={dx,dy->panX=(panX+dx/overlay.width.coerceAtLeast(1)).coerceIn(-1.0,1.0);panY=(panY+dy/overlay.height.coerceAtLeast(1)).coerceIn(-1.0,1.0);epoch++;locked=false;cmd{MPVLib.setPropertyDouble("video-pan-x",panX);MPVLib.setPropertyDouble("video-pan-y",panY)};applyEnhance()}
         val scale=ScaleGestureDetector(this,object:ScaleGestureDetector.SimpleOnScaleGestureListener(){override fun onScale(d:ScaleGestureDetector):Boolean{if(!overlay.armed){setZoom(zoom+log2(d.scaleFactor.toDouble()));return true};return false}})
@@ -145,7 +148,35 @@ class LumaActivity:Activity() {
     private fun diagnostics(){cmd{val info=JSONObject().put("applicationId",packageName).put("api",Build.VERSION.SDK_INT).put("abis",Build.SUPPORTED_ABIS.joinToString()).put("device",Build.MANUFACTURER+" "+Build.MODEL).put("decoder",MPVLib.getPropertyString("hwdec-current")).put("vo",MPVLib.getPropertyString("current-vo")).put("gpuTimeNs",JSONObject.NULL).put("physicalHuaweiVerified",false).put("codecs",MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.joinToString{it.name}).put("logs",synchronized(logs){logs.joinToString("\n")});io.execute{val f=File(cacheDir,"diagnostics.json");f.writeText(info.toString(2));ui.post{output=f;outputMime="application/json";AlertDialog.Builder(this).setTitle("本地诊断").setMessage(info.toString(2)).setPositiveButton("保存诊断"){_,_->createDocument("LumaView_diagnostics.json")}.setNegativeButton("关闭",null).show()}}}}
     private fun message(s:String){Toast.makeText(this,s,Toast.LENGTH_LONG).show()}
     private fun time(us:Long):String {val ms=(us.coerceAtLeast(0)/1000);return String.format(Locale.US,"%02d:%02d.%03d",ms/60000,(ms/1000)%60,ms%1000)}
-    override fun onActivityResult(request:Int,result:Int,data:Intent?){super.onActivityResult(request,result,data);if(result!=RESULT_OK)return;val uri=data?.data?:return;when(request){10->open(uri);11->{docs.persist(uri);io.execute{runCatching{docs.children(uri)}.onSuccess{items->ui.post{if(items.isEmpty())message("文件夹中没有直接可见的视频")else AlertDialog.Builder(this).setTitle("文件列表").setItems(items.map{it.second}.toTypedArray()){_,i->open(items[i].first)}.show()}}.onFailure{ui.post{message(it.message?:"授权失败")}}}};12->{val f=output?:return;io.execute{runCatching{docs.commit(f,uri)}.onSuccess{f.delete();ui.post{message("已保存新文件")}}.onFailure{ui.post{message(it.message?:"保存失败")}}}}}
+    override fun onActivityResult(request:Int,result:Int,data:Intent?) {
+        super.onActivityResult(request,result,data)
+        if(result!=RESULT_OK)return
+        val uri=data?.data?:return
+        when(request) {
+            10 -> open(uri)
+            11 -> {
+                docs.persist(uri)
+                io.execute {
+                    runCatching { docs.children(uri) }.onSuccess { items ->
+                        ui.post {
+                            if(items.isEmpty()) message("文件夹中没有直接可见的视频")
+                            else AlertDialog.Builder(this).setTitle("文件列表")
+                                .setItems(items.map{it.second}.toTypedArray()){_,i->open(items[i].first)}.show()
+                        }
+                    }.onFailure { e -> ui.post { message(e.message?:"授权失败") } }
+                }
+            }
+            12 -> {
+                val f=output?:return
+                if(uri==currentUri){message("目标与源文件相同，已停止保存");return}
+                io.execute {
+                    runCatching { docs.commit(f,uri) }
+                        .onSuccess { f.delete();ui.post { message("已保存新文件") } }
+                        .onFailure { e -> ui.post { message(e.message?:"保存失败") } }
+                }
+            }
+        }
+    }
     override fun onPause(){currentUri?.let{getPreferences(0).edit().putLong("pos:$it",positionUs).apply()};cmd{MPVLib.setPropertyBoolean("pause",true)};super.onPause()}
     override fun onDestroy(){ui.removeCallbacks(tick);precise.cancel();NativeExport.cancel();MPVLib.removeLogObserver(logObserver);player.prepareDestroy();alive=false;generation++;commands.execute{player.destroy()};commands.shutdown();io.shutdown();super.onDestroy()}
     @Deprecated("Deprecated in Java") override fun onBackPressed(){if(overlay.armed)cancelRoi()else if(exportBusy)message("请先完成或取消导出")else super.onBackPressed()}
