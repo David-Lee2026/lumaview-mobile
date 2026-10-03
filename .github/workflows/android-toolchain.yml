@@ -1,0 +1,69 @@
+name: LumaView Android toolchain and fixed sources
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: [.github/workflows/android-toolchain.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provision:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install and execute the official SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence sources
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;30.0.16248370' 'platform-tools' 2>&1 | tee evidence/sdk-install.log
+          java -version 2>&1 | tee evidence/java-version.txt
+          sdkmanager --list_installed > evidence/sdk-packages.txt
+          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version > evidence/ndk-clang.txt
+          cp "$ANDROID_HOME/ndk/30.0.16248370/source.properties" evidence/ndk-source.properties
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" version > evidence/aapt2-version.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" version > evidence/apksigner-version.txt
+          "$ANDROID_HOME/platform-tools/adb" version > evidence/adb-version.txt
+          printf 'int lvm_probe(void) { return 23; }\n' > "$RUNNER_TEMP/probe.c"
+          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang" -shared -fPIC -Wl,-z,max-page-size=16384 "$RUNNER_TEMP/probe.c" -o evidence/libtoolchain_probe.so
+          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -hl evidence/libtoolchain_probe.so > evidence/arm64-link-probe.txt
+      - name: Acquire immutable source revisions
+        shell: python
+        run: |
+          from pathlib import Path
+          import urllib.request,json,re,subprocess,hashlib,tarfile
+          upstream='fdf74f6830c47dbaa8a22ac79726e8303f1db5af'
+          url='https://api.github.com/repos/mpv-android/mpv-android/releases/tags/2026-09-17'
+          request=urllib.request.Request(url,headers={'User-Agent':'LumaView-build'})
+          release=json.load(urllib.request.urlopen(request,timeout=90))
+          Path('evidence/upstream-release.json').write_text(json.dumps(release,indent=2))
+          print(release['body'])
+          repos={'mpv-android':('mpv-android/mpv-android',upstream),'mpv':('mpv-player/mpv','0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6'),'ffmpeg':('FFmpeg/FFmpeg','094a2f8a2a5e7fa64736e067de224ce28fdf5979')}
+          manifest={}
+          for name,(repo,sha) in repos.items():
+              path=Path('sources')/name
+              subprocess.run(['git','init',str(path)],check=True,stdout=subprocess.DEVNULL)
+              subprocess.run(['git','-C',str(path),'remote','add','origin','https://github.com/'+repo+'.git'],check=True)
+              subprocess.run(['git','-C',str(path),'fetch','--depth=1','origin',sha],check=True)
+              subprocess.run(['git','-C',str(path),'checkout','--detach','FETCH_HEAD'],check=True)
+              got=subprocess.check_output(['git','-C',str(path),'rev-parse','HEAD'],text=True).strip()
+              assert got==sha,(got,sha)
+              archive=Path('evidence')/(name+'-'+sha[:12]+'.tar.gz')
+              with tarfile.open(archive,'w:gz') as t:
+                  for f in sorted(path.rglob('*')):
+                      if '.git' in f.relative_to(path).parts or not f.is_file():continue
+                      if f.suffix.lower() in ('.ttf','.otf','.woff','.woff2','.ttc'):continue
+                      t.add(f,arcname=name+'/'+str(f.relative_to(path)),recursive=False)
+              manifest[name]={'repository':repo,'commit':sha,'archive':archive.name,'sha256':hashlib.sha256(archive.read_bytes()).hexdigest()}
+          Path('evidence/source-lock.json').write_text(json.dumps(manifest,indent=2))
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-android-toolchain-and-sources
+          path: evidence
+          retention-days: 30
