@@ -1,0 +1,46 @@
+name: LumaView native dependencies
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: [.github/workflows/native-dependencies.yml, ci/native_dependencies.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install official build environment
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;30.0.16248370'
+          sudo apt-get update -qq
+          sudo apt-get install -y autoconf automake pkg-config libtool ninja-build unzip wget meson gperf nasm python3-jinja2 glslang-tools
+      - name: Acquire and pin sources
+        run: python3 ci/native_dependencies.py
+      - name: Build native dependencies and engine
+        run: |
+          set -euo pipefail
+          cd upstream/buildscripts
+          ./buildall.sh --arch '${{ matrix.arch }}' mpv 2>&1 | tee ../../native-evidence/build-${{ matrix.arch }}.log
+          tar czf ../../native-evidence/prefix-${{ matrix.arch }}.tar.gz prefix/${{ matrix.arch }}
+          cd ../..
+          find upstream/buildscripts/prefix/${{ matrix.arch }} -type f -name '*.so*' -exec sha256sum {} \; > native-evidence/native-sha256.txt
+          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -hl upstream/buildscripts/prefix/${{ matrix.arch }}/lib/libmpv.so > native-evidence/libmpv-elf.txt
+          tar czf native-evidence/fixed-dependency-sources-${{ matrix.arch }}.tar.gz --exclude=.git --exclude='_build*' --exclude=build --exclude=*.ttf --exclude=*.otf --exclude=*.ttc --exclude=*.woff --exclude=*.woff2 -C upstream/buildscripts deps
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-${{ matrix.arch }}
+          path: native-evidence
+          retention-days: 30
