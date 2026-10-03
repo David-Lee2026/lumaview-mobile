@@ -33,6 +33,7 @@ std::atomic<bool> g_event_thread_request_exit(false);
 
 static pthread_t event_thread_id;
 static jobject global_appctx;
+extern void release_surfaces(JNIEnv *env);
 
 static void prepare_environment(JNIEnv *env, jobject appctx) {
     setlocale(LC_NUMERIC, "C");
@@ -94,7 +95,9 @@ jni_func(void, destroy) {
 
     mpv_terminate_destroy(g_mpv);
     g_mpv = NULL;
-    if (global_appctx) { env->DeleteGlobalRef(global_appctx); global_appctx=NULL; }
+    release_surfaces(env);
+    if(global_appctx)env->DeleteGlobalRef(global_appctx);
+    global_appctx=nullptr;
 }
 
 jni_func(void, command, jobjectArray jarray) {
@@ -111,7 +114,8 @@ jni_func(void, command, jobjectArray jarray) {
         arguments[i] = env->GetStringUTFChars(strings[i], NULL);
     }
 
-    mpv_command(g_mpv, arguments);
+    int result=mpv_command(g_mpv, arguments);
+    if(result<0)ALOGE("command %s failed: %s",arguments[0],mpv_error_string(result));
 
     for (jsize i = 0; i < len; ++i) {
         env->ReleaseStringUTFChars(strings[i], arguments[i]);

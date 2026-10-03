@@ -76,7 +76,6 @@ extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_NativeExport_remux
     while(r>=0&&!cancelled(token)){int read=av_read_frame(in.ctx,p);if(read<0)break;int k=p->stream_index==vi?0:(p->stream_index==ai&&ai>=0?1:-1);if(k<0){av_packet_unref(p);continue;}
         AVStream *src=in.ctx->streams[p->stream_index];int64_t t=us(src,p->pts);
         if(t==AV_NOPTS_VALUE){r=AVERROR_INVALIDDATA;av_packet_unref(p);break;}
-        if(k==0&&t>=end&&(p->flags&AV_PKT_FLAG_KEY)&&idr(p,src->codecpar)){av_packet_unref(p);break;}
         if(t<base||t>=end){av_packet_unref(p);continue;}
         if(k==0&&!wroteVideo){if(!(p->flags&AV_PKT_FLAG_KEY)||!idr(p,src->codecpar)){av_packet_unref(p);continue;}wroteVideo=true;}
         last=std::max(last,t+us(src,p->duration));

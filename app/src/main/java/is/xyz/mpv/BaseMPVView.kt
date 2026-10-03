@@ -39,7 +39,13 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
         MPVLib.setOptionString("idle", "once")
 
         ready=true
-        post { if(!closing)holder.addCallback(this) }
+        post {
+            if(!closing){
+                holder.addCallback(this)
+                // addCallback does not replay a Surface created during async initialization.
+                if(holder.surface.isValid){surfaceCreated(holder);surfaceChanged(holder,0,width,height)}
+            }
+        }
         observeProperties()
     }
 
