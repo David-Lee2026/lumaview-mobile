@@ -1,0 +1,59 @@
+name: LumaView installable APK
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: ['app/**', 'ci/build_apk.py', 'ci/apply_native_patch.py', '.github/workflows/apk.yml', 'build.gradle', 'gradle/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: lumaview-apk
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install locked SDK and NDK
+        run: python3 ci/install_sdk.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-arm64
+          path: native-inputs/arm64
+          run-id: 37127934301
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-x86_64
+          path: native-inputs/x86_64
+          run-id: 37127934301
+          github-token: ${{ github.token }}
+      - name: Build frontend
+        run: |
+          python3 -m venv "$RUNNER_TEMP/lvm-meson"
+          "$RUNNER_TEMP/lvm-meson/bin/pip" install meson==1.11.0
+          echo "$RUNNER_TEMP/lvm-meson/bin" >> "$GITHUB_PATH"
+      - name: Build patched engine, JNI and APK
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 ci/build_apk.py 2>&1 | tee evidence/build-apk.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LumaView-APKs-and-build-evidence
+          path: |
+            release
+            evidence
+            toolchain-evidence
+            app/build/reports/tests
+            app/build/test-results
+            app/build/outputs/apk/androidTest
+          retention-days: 30
+          if-no-files-found: error

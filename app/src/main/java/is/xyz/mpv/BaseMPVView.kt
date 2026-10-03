@@ -49,12 +49,16 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
         MPVLib.destroy()
     }
 
+    fun prepareDestroy() {
+        holder.removeCallback(this)
+    }
+
     protected abstract fun initOptions()
     protected abstract fun postInitOptions()
 
     protected abstract fun observeProperties()
 
-    private var filePath: String? = null
+    @Volatile private var filePath: String? = null
 
     /**
      * Set the first file to be played once the player is ready.

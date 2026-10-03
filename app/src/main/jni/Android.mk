@@ -80,3 +80,11 @@ LOCAL_LDLIBS    := -llog -latomic
 LOCAL_SHARED_LIBRARIES := swscale avcodec mpv
 
 include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := liblumaexport
+LOCAL_SRC_FILES := lumaview/export.cpp
+LOCAL_CPPFLAGS := -std=c++17 -Wall
+LOCAL_C_INCLUDES := $(PREFIX)/include
+LOCAL_SHARED_LIBRARIES := avformat avcodec avutil
+include $(BUILD_SHARED_LIBRARY)
