@@ -105,20 +105,20 @@ class PlayerIntegrationTest {
   for(y in b.height/3 until b.height*2/3)for(x in b.width/3 until b.width*2/3){val c=b.getPixel(x,y);sum+=.2126*Color.red(c)+.7152*Color.green(c)+.0722*Color.blue(c);n++}
   b.recycle();return sum/n
  }
- private fun grayFixture(name:String,inside:Int,outside:Int):File {
-  val b=Bitmap.createBitmap(640,360,Bitmap.Config.ARGB_8888);val c=Canvas(b);c.drawColor(Color.rgb(outside,outside,outside))
-  c.drawRect(140f,70f,500f,290f,Paint().apply{color=Color.rgb(inside,inside,inside)})
-  val f=File(context.filesDir,name);f.outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle();return f
+ private fun videoFixture(name:String):File {
+  val f=File(context.filesDir,name)
+  inst.context.assets.open(name).use{input->f.outputStream().use{input.copyTo(it)}}
+  return f
  }
  @Test fun roiPixelsIgnoreOutsideAndRespondInsideWithNewIntents(){
-  val frames=listOf(grayFixture("roi-darkbg.png",96,0),grayFixture("roi-whitebg.png",96,255),grayFixture("roi-inside-dark.png",72,255))
+  val frames=listOf("roi-darkbg.mp4","roi-whitebg.mp4","roi-inside-dark.mp4").map(::videoFixture)
   activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(frames[0])).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
   session=value("session") as PlayerSession
   val results=org.json.JSONArray()
   try {
    for((i,f) in frames.withIndex()){
     if(i>0){val old=session.state.generation;inst.runOnMainSync{activity.startActivity(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(f)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))};waitFor("reused activity receives new media"){session.state.generation>old&&session.state.width==640}}
-    waitFor("gray native frame"){session.state.width==640&&session.state.receipt!=null}
+    waitFor("decoded H264 native frame"){session.state.width==640&&(session.state.durationUs?:0)>0&&session.state.receipt!=null}
     session.pause(true);session.viewport(RoiRect(160.0,90.0,480.0,270.0),0)
     val settings=EnhanceSettings(mode=1,shadows=0f,denoise=0f,detail=0f)
     session.enhance(settings,true)
