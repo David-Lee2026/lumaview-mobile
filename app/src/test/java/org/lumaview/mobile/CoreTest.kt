@@ -37,6 +37,7 @@ class CoreTest {
         var a = 0.0; var b = 0.0
         repeat(30) { a = ExposureReference.smooth(a, 2.0, 1.0 / 30.0) }
         repeat(60) { b = ExposureReference.smooth(b, 2.0, 1.0 / 60.0) }
+        assertTrue(a > .9 && b > .9)
         assertEquals(a, b, 0.025)
     }
     @Test fun highlightMappingIsMonotonicAndFinite() {

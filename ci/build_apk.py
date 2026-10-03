@@ -25,7 +25,7 @@ for arch in ['arm64','x86_64']:
 env=os.environ.copy();env.update(PREFIX64=str(b/'prefix/arm64'),PREFIX_X64=str(b/'prefix/x86_64'))
 subprocess.run([str(Path(env['ANDROID_NDK_ROOT'])/'ndk-build'),'-C',str(root/'app/src/main'),'-j2'],env=env,check=True)
 fixture=root/'app/src/androidTest/assets/fixture.mp4';fixture.parent.mkdir(parents=True,exist_ok=True)
-run('ffmpeg','-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=640x360:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','8','-vf','eq=brightness=-0.30:contrast=0.40','-c:v','libx264','-pix_fmt','yuv420p','-g','30','-bf','0','-c:a','aac',fixture)
+run('ffmpeg','-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=640x360:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','8','-vf','eq=brightness=-0.30:contrast=0.40','-c:v','libx264','-pix_fmt','yuv420p','-g','30','-bf','2','-c:a','aac',fixture)
 run('./gradlew','testDefaultDebugUnitTest','assembleDefaultDebug','assembleDefaultDebugAndroidTest','--stacktrace')
 release=root/'release';release.mkdir(exist_ok=True)
 tool=Path(os.environ['ANDROID_HOME'])/'build-tools/36.0.0'

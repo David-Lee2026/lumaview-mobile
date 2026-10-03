@@ -1,13 +1,14 @@
 diff --git a/video/out/gpu/video.c b/video/out/gpu/video.c
-index b114846ba..6dadc95f4 100644
+index b114846ba..9ab7c825f 100644
 --- a/video/out/gpu/video.c
 +++ b/video/out/gpu/video.c
-@@ -147,6 +147,12 @@ struct gl_video {
+@@ -147,6 +147,13 @@ struct gl_video {
      struct mpv_global *global;
      struct mp_log *log;
      struct gl_video_opts opts;
 +    struct ra_tex *lvm_history;
-+    struct ra_tex *lvm_frame_tex;
++    int lvm_receipt;
++    bool lvm_reported;
 +    double lvm_last_pts;
 +    int lvm_epoch;
 +    float lvm_dt;
@@ -15,7 +16,7 @@ index b114846ba..6dadc95f4 100644
      struct m_config_cache *opts_cache;
      struct gl_lcms *cms;
  
-@@ -438,6 +444,7 @@ const struct m_sub_options gl_video_conf = {
+@@ -438,6 +445,7 @@ const struct m_sub_options gl_video_conf = {
      .opts = (const m_option_t[]) {
          {"gpu-dumb-mode", OPT_CHOICE(dumb_mode,
              {"auto", 0}, {"yes", 1}, {"no", -1})},
@@ -23,7 +24,7 @@ index b114846ba..6dadc95f4 100644
          {"gamma-factor", OPT_FLOAT(gamma), M_RANGE(0.1, 2.0)},
          {"gamma-auto", OPT_BOOL(gamma_auto),
              .deprecation_message = "replacement: gamma-auto.lua"},
-@@ -1563,6 +1570,11 @@ static bool pass_hook_setup_binds(struct gl_video *p, const char *name,
+@@ -1563,6 +1571,11 @@ static bool pass_hook_setup_binds(struct gl_video *p, const char *name,
              }
          }
  
@@ -35,7 +36,19 @@ index b114846ba..6dadc95f4 100644
          struct image bind_img;
          if (!saved_img_find(p, bind_name, &bind_img)) {
              // Clean up texture bindings and move on to the next hook
-@@ -1738,6 +1750,28 @@ found: ;
+@@ -1690,6 +1703,11 @@ found:
+         }
+ 
+         saved_img_store(p, store_name, saved_img);
++        if (strcmp(store_name,"LVM_STATS") == 0) {
++            copy_image(p,&(unsigned int){0},saved_img);
++            finish_pass_tex(p,&p->lvm_history,1,1);
++            p->lvm_reset=false;
++        }
+     }
+ 
+     return img;
+@@ -1738,6 +1756,28 @@ found: ;
  static void load_shader(struct gl_video *p, struct bstr body)
  {
      gl_sc_hadd_bstr(p->sc, body);
@@ -64,40 +77,52 @@ index b114846ba..6dadc95f4 100644
      gl_sc_uniform_dynamic(p->sc);
      gl_sc_uniform_f(p->sc, "random", (double)av_lfg_get(&p->lfg) / UINT32_MAX);
      gl_sc_uniform_dynamic(p->sc);
-@@ -3240,7 +3274,23 @@ static bool pass_render_frame(struct gl_video *p, struct mp_image *mpi,
+@@ -3212,8 +3252,15 @@ static bool pass_render_frame(struct gl_video *p, struct mp_image *mpi,
+     if (p->image_params.rotate % 180 == 90)
+         MPSWAP(int, p->texture_w, p->texture_h);
+ 
+-    if (p->dumb_mode)
++    float requested=0;int bypass=0;
++    if (p->opts.lvm_params) sscanf(p->opts.lvm_params,"%f %*f %*f %*f %*f %*f %*f %*d %*d %d",&requested,&bypass);
++    int lvm_effective=!isfinite(requested)||bypass ? 0 : (int)requested;
++    if (!pl_color_space_is_hdr(&p->image_params.color)) { } else lvm_effective=-2;
++    if (p->dumb_mode) {
++        if (!p->lvm_reported || p->lvm_receipt!=-1) MP_INFO(p,"LVM_RENDER state=-1\n");
++        p->lvm_reported=true;p->lvm_receipt=-1;
+         return true;
++    }
+ 
+     pass_read_video(p);
+     pass_opt_hook_point(p, "NATIVE", &p->texture_offset);
+@@ -3240,7 +3287,18 @@ static bool pass_render_frame(struct gl_video *p, struct mp_image *mpi,
          pass_read_tex(p, p->blend_subs_tex);
          pass_describe(p, "blend subs video");
      }
+-    pass_opt_hook_point(p, "MAIN", &p->texture_offset);
 +    double pts = mpi->pts;
 +    double dt = pts == MP_NOPTS_VALUE ? 0.0 : pts-p->lvm_last_pts;
 +    p->lvm_reset = dt < 0 || dt > 0.5 || p->lvm_reset;
 +    p->lvm_dt = dt > 0 && dt <= 0.5 ? dt : 0;
 +    p->lvm_last_pts=pts;
-     pass_opt_hook_point(p, "MAIN", &p->texture_offset);
-+    // Store exposure history after all MAIN hooks. A separate FBO avoids
-+    // sampling the render target being written during the next frame.
-+    struct image lvm_stats;
-+    if (saved_img_find(p,"LVM_STATS",&lvm_stats)) {
-+        finish_pass_tex(p,&p->lvm_frame_tex,p->texture_w,p->texture_h);
-+        copy_image(p,&(unsigned int){0},lvm_stats);
-+        finish_pass_tex(p,&p->lvm_history,1,1);
-+        pass_read_tex(p,p->lvm_frame_tex);
-+        p->lvm_reset=false;
++    if (lvm_effective > 0) pass_opt_hook_point(p, "MAIN", &p->texture_offset);
++    int receipt=gl_sc_error_state(p->sc) ? -3 : lvm_effective;
++    if (!p->lvm_reported || receipt != p->lvm_receipt) {
++        MP_INFO(p,"LVM_RENDER state=%d\n",receipt);
++        p->lvm_receipt=receipt; p->lvm_reported=true;
 +    }
 +
  
      pass_scale_main(p);
  
-@@ -4213,6 +4263,8 @@ void gl_video_uninit(struct gl_video *p)
+@@ -4213,6 +4271,7 @@ void gl_video_uninit(struct gl_video *p)
      ra_hwdec_ctx_uninit(&p->hwdec_ctx);
      gl_sc_destroy(p->sc);
  
 +    ra_tex_free(p->ra, &p->lvm_history);
-+    ra_tex_free(p->ra, &p->lvm_frame_tex);
      ra_tex_free(p->ra, &p->lut_3d_texture);
      ra_buf_free(p->ra, &p->hdr_peak_ssbo);
  
-@@ -4328,7 +4380,16 @@ struct gl_video *gl_video_init(struct ra *ra, struct mp_log *log,
+@@ -4328,7 +4387,16 @@ struct gl_video *gl_video_init(struct ra *ra, struct mp_log *log,
  
  static void gl_video_update_options(struct gl_video *p)
  {

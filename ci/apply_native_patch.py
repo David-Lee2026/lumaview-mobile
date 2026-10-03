@@ -7,7 +7,7 @@ def replace(s, old, new):
     assert s.count(old) == 1, f'anchor changed: {old[:70]}'
     return s.replace(old, new)
 s = v.read_text()
-s = replace(s, '    struct gl_video_opts opts;\n', '    struct gl_video_opts opts;\n    struct ra_tex *lvm_history;\n    struct ra_tex *lvm_frame_tex;\n    double lvm_last_pts;\n    int lvm_epoch;\n    float lvm_dt;\n    bool lvm_reset;\n')
+s = replace(s, '    struct gl_video_opts opts;\n', '    struct gl_video_opts opts;\n    struct ra_tex *lvm_history;\n    int lvm_receipt;\n    bool lvm_reported;\n    double lvm_last_pts;\n    int lvm_epoch;\n    float lvm_dt;\n    bool lvm_reset;\n')
 s = replace(s, '        {"gamma-factor", OPT_FLOAT(gamma), M_RANGE(0.1, 2.0)},', '        {"lvm-params", OPT_STRING(lvm_params)},\n        {"gamma-factor", OPT_FLOAT(gamma), M_RANGE(0.1, 2.0)},')
 s = replace(s, '        struct image bind_img;\n', '''        if (strcmp(bind_name, "LVM_HISTORY") == 0) {
             struct image hist = p->lvm_history ? image_wrap(p->lvm_history, PLANE_RGB, 4) : img;
@@ -40,21 +40,33 @@ s = replace(s, '    gl_sc_hadd_bstr(p->sc, body);\n', '''    gl_sc_hadd_bstr(p->
     gl_sc_uniform_dynamic(p->sc); gl_sc_uniform_vec2(p->sc,"lvm_roi0",roi);
     gl_sc_uniform_dynamic(p->sc); gl_sc_uniform_vec2(p->sc,"lvm_roi1",roi+2);
 ''')
+s = replace(s, '        saved_img_store(p, store_name, saved_img);\n', '''        saved_img_store(p, store_name, saved_img);
+        if (strcmp(store_name,"LVM_STATS") == 0) {
+            copy_image(p,&(unsigned int){0},saved_img);
+            finish_pass_tex(p,&p->lvm_history,1,1);
+            p->lvm_reset=false;
+        }
+''')
+s = replace(s, '    if (p->dumb_mode)\n        return true;\n', '''    float requested=0;int bypass=0;
+    if (p->opts.lvm_params) sscanf(p->opts.lvm_params,"%f %*f %*f %*f %*f %*f %*f %*d %*d %d",&requested,&bypass);
+    int lvm_effective=!isfinite(requested)||bypass ? 0 : (int)requested;
+    if (!pl_color_space_is_hdr(&p->image_params.color)) { } else lvm_effective=-2;
+    if (p->dumb_mode) {
+        if (!p->lvm_reported || p->lvm_receipt!=-1) MP_INFO(p,"LVM_RENDER state=-1\\n");
+        p->lvm_reported=true;p->lvm_receipt=-1;
+        return true;
+    }
+''')
 s = replace(s, '    pass_opt_hook_point(p, "MAIN", &p->texture_offset);', '''    double pts = mpi->pts;
     double dt = pts == MP_NOPTS_VALUE ? 0.0 : pts-p->lvm_last_pts;
     p->lvm_reset = dt < 0 || dt > 0.5 || p->lvm_reset;
     p->lvm_dt = dt > 0 && dt <= 0.5 ? dt : 0;
     p->lvm_last_pts=pts;
-    pass_opt_hook_point(p, "MAIN", &p->texture_offset);
-    // Store exposure history after all MAIN hooks. A separate FBO avoids
-    // sampling the render target being written during the next frame.
-    struct image lvm_stats;
-    if (saved_img_find(p,"LVM_STATS",&lvm_stats)) {
-        finish_pass_tex(p,&p->lvm_frame_tex,p->texture_w,p->texture_h);
-        copy_image(p,&(unsigned int){0},lvm_stats);
-        finish_pass_tex(p,&p->lvm_history,1,1);
-        pass_read_tex(p,p->lvm_frame_tex);
-        p->lvm_reset=false;
+    if (lvm_effective > 0) pass_opt_hook_point(p, "MAIN", &p->texture_offset);
+    int receipt=gl_sc_error_state(p->sc) ? -3 : lvm_effective;
+    if (!p->lvm_reported || receipt != p->lvm_receipt) {
+        MP_INFO(p,"LVM_RENDER state=%d\\n",receipt);
+        p->lvm_receipt=receipt; p->lvm_reported=true;
     }
 ''')
 s = replace(s, '    if (m_config_cache_update(p->opts_cache)) {\n', '''    void *changed;
@@ -68,7 +80,7 @@ s = replace(s, '    if (m_config_cache_update(p->opts_cache)) {\n', '''    void 
     }
     if (reinit) {
 ''')
-s = replace(s, '    ra_tex_free(p->ra, &p->lut_3d_texture);\n    ra_buf_free(p->ra, &p->hdr_peak_ssbo);', '    ra_tex_free(p->ra, &p->lvm_history);\n    ra_tex_free(p->ra, &p->lvm_frame_tex);\n    ra_tex_free(p->ra, &p->lut_3d_texture);\n    ra_buf_free(p->ra, &p->hdr_peak_ssbo);')
+s = replace(s, '    ra_tex_free(p->ra, &p->lut_3d_texture);\n    ra_buf_free(p->ra, &p->hdr_peak_ssbo);', '    ra_tex_free(p->ra, &p->lvm_history);\n    ra_tex_free(p->ra, &p->lut_3d_texture);\n    ra_buf_free(p->ra, &p->hdr_peak_ssbo);')
 v.write_text(s)
 h.write_text(replace(h.read_text(), 'struct gl_video_opts {\n', 'struct gl_video_opts {\n    char *lvm_params;\n'))
 out=pathlib.Path('evidence');out.mkdir(exist_ok=True)

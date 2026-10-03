@@ -13,8 +13,10 @@ import java.io.File
 @UnstableApi
 class PreciseExport(private val context:Context) {
     private var active:Transformer?=null
+    private var activeOutput:File?=null
     fun start(input:File,output:File,range:ClipRange,audio:Boolean,done:(String?,String?)->Unit) {
         check(active==null)
+        activeOutput=output
         val factory=DefaultEncoderFactory.Builder(context).setEnableFallback(false).build()
         val force=object:Codec.EncoderFactory by factory {
             override fun videoNeedsEncoding()=true
@@ -26,12 +28,12 @@ class PreciseExport(private val context:Context) {
             .experimentalSetTrimOptimizationEnabled(false).experimentalSetMp4EditListTrimEnabled(false)
             .addListener(object:Transformer.Listener {
                 override fun onCompleted(composition:Composition,r:ExportResult) {
-                    active=null
+                    active=null;activeOutput=null
                     done("{\"videoEncoder\":\"${r.videoEncoderName}\",\"audioEncoder\":\"${r.audioEncoderName}\",\"videoFrames\":${r.videoFrameCount},\"durationMs\":${r.approximateDurationMs},\"width\":${r.width},\"height\":${r.height},\"videoConversion\":${r.videoConversionProcess},\"audioConversion\":${r.audioConversionProcess}}",null)
                 }
-                override fun onError(composition:Composition,r:ExportResult,e:ExportException){active=null;output.delete();done(null,e.message?:"精确导出失败")}
+                override fun onError(composition:Composition,r:ExportResult,e:ExportException){active=null;activeOutput=null;output.delete();done(null,e.message?:"精确导出失败")}
             }).build()
         active!!.start(edited,output.absolutePath)
     }
-    fun cancel(){active?.cancel();active=null}
+    fun cancel(){active?.cancel();active=null;activeOutput?.delete();activeOutput=null}
 }

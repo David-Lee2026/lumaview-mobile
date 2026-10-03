@@ -46,10 +46,30 @@ class DocumentAccess(private val context: Context) {
         }
         return result.sortedBy { it.second.lowercase() }
     }
-    fun commit(file: File, uri: Uri) {
+    fun sameDocument(first: Uri?, second: Uri): Boolean {
+        if(first==null)return false
+        if(first==second)return true
+        if(first.authority!=second.authority)return false
+        val a=runCatching { DocumentsContract.getDocumentId(first) }.getOrNull()
+        val b=runCatching { DocumentsContract.getDocumentId(second) }.getOrNull()
+        require(a!=null && b!=null) { "无法确认同一提供方的文档身份，已停止保存" }
+        return a==b
+    }
+    fun commit(file: File, uri: Uri, source: Uri?, cancelled:()->Boolean = {false}) {
+        require(!sameDocument(source,uri)) { "目标与源文档相同，已停止保存" }
+        // ACTION_CREATE_DOCUMENT must return a new empty document. Refuse nonempty targets.
+        val confirmedEmpty=context.contentResolver.query(uri,arrayOf(OpenableColumns.SIZE),null,null,null)?.use { c ->
+            c.moveToFirst() && !c.isNull(0) && c.getLong(0)==0L
+        } ?: false
+        require(confirmedEmpty) { "无法确认目标是空的新文档，已停止保存；暂存文件已保留" }
         try {
             context.contentResolver.openOutputStream(uri,"w").use { dst ->
-                requireNotNull(dst) { "无法写入新文档" };file.inputStream().use { it.copyTo(dst) }
+                requireNotNull(dst) { "无法写入新文档" }
+                file.inputStream().use { src ->
+                    val buffer=ByteArray(1024*1024)
+                    while(true){check(!cancelled()) { "保存已取消" };val n=src.read(buffer);if(n<0)break;dst.write(buffer,0,n)}
+                    check(!cancelled()) { "保存已取消" };dst.flush()
+                }
             }
         } catch(e:Exception) {
             val deleted=runCatching { DocumentsContract.deleteDocument(context.contentResolver,uri) }.getOrDefault(false)

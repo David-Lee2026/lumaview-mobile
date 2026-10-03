@@ -9,6 +9,11 @@ import android.view.SurfaceView
 // Contains only the essential code needed to get a picture on the screen
 
 abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(context, attrs), SurfaceHolder.Callback {
+    var dispatch: ((() -> Unit) -> Unit) = { it() }
+    @Volatile private var closing=false
+    @Volatile private var ready=false
+    @Volatile private var surfaceGeneration=0L
+    private fun serial(block:()->Unit) { dispatch { if(ready&&!closing)block() } }
     /**
      * Initialize libmpv.
      *
@@ -33,7 +38,8 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
         // need to idle at least once for playFile() logic to work
         MPVLib.setOptionString("idle", "once")
 
-        holder.addCallback(this)
+        ready=true
+        post { if(!closing)holder.addCallback(this) }
         observeProperties()
     }
 
@@ -47,9 +53,11 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
         holder.removeCallback(this)
 
         MPVLib.destroy()
+        ready=false
     }
 
     fun prepareDestroy() {
+        closing=true
         holder.removeCallback(this)
     }
 
@@ -81,33 +89,30 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
     // Surface callbacks
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        MPVLib.setPropertyString("android-surface-size", "${width}x$height")
+        val g=surfaceGeneration
+        serial { if(g==surfaceGeneration)MPVLib.setPropertyString("android-surface-size", "${width}x$height") }
     }
-
     override fun surfaceCreated(holder: SurfaceHolder) {
-        Log.w(TAG, "attaching surface")
-        MPVLib.attachSurface(holder.surface)
-        // This forces mpv to render subs/osd/whatever into our surface even if it would ordinarily not
-        MPVLib.setOptionString("force-window", "yes")
-
-        if (filePath != null) {
-            MPVLib.command(arrayOf("loadfile", filePath as String))
-            filePath = null
-        } else {
-            // We disable video output when the context disappears, enable it back
-            MPVLib.setPropertyString("vo", voInUse)
+        val surface=holder.surface
+        val g=++surfaceGeneration
+        serial {
+            if(g!=surfaceGeneration || !surface.isValid)return@serial
+            MPVLib.attachSurface(surface)
+            MPVLib.setOptionString("force-window", "yes")
+            val path=filePath
+            if(path!=null){MPVLib.command(arrayOf("loadfile",path));filePath=null}
+            else MPVLib.setPropertyString("vo",voInUse)
         }
     }
-
     override fun surfaceDestroyed(holder: SurfaceHolder) {
-        Log.w(TAG, "detaching surface")
-        MPVLib.setPropertyString("vo", "null")
-        MPVLib.setPropertyString("force-window", "no")
-        // Note that before calling detachSurface() we need to be sure that libmpv
-        // is done using the surface.
-        // FIXME: There could be a race condition here, because I don't think
-        // setting a property will wait for VO deinit.
-        MPVLib.detachSurface()
+        surfaceGeneration++
+        // SurfaceView requires stopping the old VO before returning this callback.
+        // With config=no this synchronous property change joins VO destruction.
+        if(ready&&!closing) {
+            MPVLib.setPropertyString("vo","null")
+            MPVLib.setPropertyString("force-window","no")
+            MPVLib.detachSurface()
+        }
     }
 
     companion object {
