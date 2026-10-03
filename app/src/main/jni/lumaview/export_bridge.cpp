@@ -74,7 +74,7 @@ Plan analyze(Input &input,int vi,int ai,int si,int64_t a,int64_t b){
  av_packet_free(&packet);if(stopped.load())throw std::runtime_error("已取消");if(rc<0&&rc!=AVERROR_EOF)fail(rc,"读取源视频");
  if(p.start==AV_NOPTS_VALUE)throw std::runtime_error("找不到可证明独立解码的 IDR 起点，请使用精确导出");
  if(p.end<=p.start)throw std::runtime_error("有效片段过短");
- for(unsigned i=0;i<f->nb_streams;i++)if((int)i!=p.video&&(int)i!=p.audio&&(int)i!=p.sub){if(!p.dropped.empty())p.dropped+=", ";p.dropped+=std::to_string(i)+" ("+av_get_media_type_string(f->streams[i]->codecpar->codec_type)+")";}
+ for(unsigned i=0;i<f->nb_streams;i++)if((int)i!=p.video&&(int)i!=p.audio&&(int)i!=p.sub){if(!p.dropped.empty())p.dropped+=", ";p.dropped+=std::to_string(i)+" ("+(av_get_media_type_string(f->streams[i]->codecpar->codec_type)?av_get_media_type_string(f->streams[i]->codecpar->codec_type):"unknown")+")";}
  return p;
 }
 std::string planJSON(const Plan &p){std::ostringstream s;s<<"{\"video\":"<<p.video<<",\"audio\":"<<p.audio<<",\"subtitle\":"<<p.sub<<",\"startUs\":"<<p.start-p.origin<<",\"endUs\":"<<p.end-p.origin<<",\"durationUs\":"<<p.duration<<",\"requestedStartUs\":"<<p.askedA<<",\"requestedEndUs\":"<<p.askedB<<",\"container\":"<<quote(p.container)<<",\"omitted\":"<<quote(p.dropped)<<",\"hdr\":"<<(p.hdr?"true":"false")<<",\"width\":"<<p.width<<",\"height\":"<<p.height<<"}";return s.str();}
@@ -110,7 +110,8 @@ std::string writeCopy(Input &input,int vi,int ai,int si,int64_t start,int64_t en
 std::string get(JNIEnv *e,jstring s){const char *p=e->GetStringUTFChars(s,nullptr);std::string out=p;e->ReleaseStringUTFChars(s,p);return out;}
 jstring error(JNIEnv *e,const std::exception &x){return e->NewStringUTF(("{\"error\":"+quote(x.what())+"}").c_str());}
 }
-extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_analyze(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b){stopped=false;fraction=0;try{Input input(fd);return e->NewStringUTF(planJSON(analyze(input,vi,ai,si,a,b)).c_str());}catch(const std::exception &x){return error(e,x);}}
-extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_write(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b,jstring path,jstring container){stopped=false;fraction=0;try{Input input(fd);return e->NewStringUTF(writeCopy(input,vi,ai,si,a,b,get(e,path),get(e,container)).c_str());}catch(const std::exception &x){return error(e,x);}}
+extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_analyze(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b){try{Input input(fd);return e->NewStringUTF(planJSON(analyze(input,vi,ai,si,a,b)).c_str());}catch(const std::exception &x){return error(e,x);}}
+extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_write(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b,jstring path,jstring container){try{Input input(fd);return e->NewStringUTF(writeCopy(input,vi,ai,si,a,b,get(e,path),get(e,container)).c_str());}catch(const std::exception &x){return error(e,x);}}
+extern "C" JNIEXPORT void JNICALL Java_org_lumaview_mobile_export_NativeExporter_prepare(JNIEnv*,jobject){stopped=false;fraction=0;}
 extern "C" JNIEXPORT void JNICALL Java_org_lumaview_mobile_export_NativeExporter_cancel(JNIEnv*,jobject){stopped=true;}
 extern "C" JNIEXPORT jdouble JNICALL Java_org_lumaview_mobile_export_NativeExporter_progress(JNIEnv*,jobject){return fraction.load();}

@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreTest {
+    @Test fun unchangedPresetPreservesComparisonAndLock() {
+        val s=EnhanceSettings(bypass=true,locked=true)
+        assertEquals(s,s.selectMode(s.mode))
+        assertFalse(s.selectMode(2).bypass)
+        assertFalse(s.selectMode(2).locked)
+    }
+    @Test fun preciseTimeRoundTripsMicroseconds() {
+        for(v in listOf(0L,1L,1234567L,86400000001L,Long.MAX_VALUE/2))
+            assertEquals(v,parseTime(formatTime(v,true)))
+    }
+
     @Test fun letterboxIsNotSelectable() {
         val map = RoiMath(1920, 1080, 1000, 1000)
         assertNull(map.point(100.0, 50.0))

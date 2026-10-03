@@ -20,15 +20,17 @@ class ReadLease(val uri:Uri,val name:String,val descriptor:ParcelFileDescriptor,
  override fun close(){if(closed.compareAndSet(false,true)){descriptor.close();cached?.delete()}}
 }
 /** File picker grants only. Never resolve content:// URIs into guessed filesystem paths. */
-class DocumentAccess(private val context:Context) {
+class DocumentAccess(context:Context):AutoCloseable {
+ private val context=context.applicationContext;private val closed=AtomicBoolean(false)
  private val io=Executors.newSingleThreadExecutor();private val ui=Handler(Looper.getMainLooper());private val next=AtomicLong()
  private val cancelled=ConcurrentHashMap<Long,AtomicBoolean>()
+ override fun close(){if(closed.compareAndSet(false,true)){cancelled.values.forEach{it.set(true)};io.shutdown()}}
  fun rememberGrant(uri:Uri,flags:Int){
   if(flags and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION!=0)try {context.contentResolver.takePersistableUriPermission(uri,flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))}catch(_:SecurityException){}
  }
  fun cancel(id:Long){cancelled[id]?.set(true)}
  fun openRead(uri:Uri,allowCache:Boolean=false,reply:(Result<ReadLease>)->Unit):Long {
-  val id=next.incrementAndGet();val stop=AtomicBoolean();cancelled[id]=stop
+  val id=next.incrementAndGet();if(closed.get()){ui.post{reply(Result.failure(IOException("文件访问已关闭")))};return id};val stop=AtomicBoolean();cancelled[id]=stop
   io.execute {
    val result=runCatching {
     require(uri.scheme=="content"||uri.scheme=="file"){"只接受系统授权的本地媒体文档"}
@@ -53,14 +55,14 @@ class DocumentAccess(private val context:Context) {
     }finally{owned?.close();temporary?.delete()}
    }
    cancelled.remove(id)
-   ui.post{if(stop.get()){result.getOrNull()?.close();reply(Result.failure(IOException("已取消")))}else reply(result)}
+   ui.post{if(stop.get()||closed.get()){result.getOrNull()?.close();reply(Result.failure(IOException("已取消")))}else reply(result)}
   };return id
  }
  fun displayName(uri:Uri):String {
   return try{context.contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use{c->if(c.moveToFirst())c.getString(0)else null}?:uri.lastPathSegment?:"视频"}catch(_:Exception){"视频"}
  }
  fun listChildren(tree:Uri,parent:String?=null,reply:(Result<List<DocumentEntry>>)->Unit):Long {
-  val id=next.incrementAndGet();val stop=AtomicBoolean();cancelled[id]=stop
+  val id=next.incrementAndGet();if(closed.get()){ui.post{reply(Result.failure(IOException("文件访问已关闭")))};return id};val stop=AtomicBoolean();cancelled[id]=stop
   io.execute{
    val result=runCatching {
     val root=parent?:DocumentsContract.getTreeDocumentId(tree)
@@ -73,7 +75,7 @@ class DocumentAccess(private val context:Context) {
      if(dir||c.getString(2)?.startsWith("video/")==true||c.getString(1).substringAfterLast('.').lowercase() in setOf("mkv","mp4","mov","avi","webm","m4v","ts"))rows.add(DocumentEntry(DocumentsContract.buildDocumentUriUsingTree(tree,c.getString(0)),c.getString(1),dir,if(c.isNull(3))null else c.getLong(3)))
     }}?:error("无法读取文件夹，请重新授权")
     rows.sortedWith(compareByDescending<DocumentEntry>{it.directory}.thenBy{it.name.lowercase()})
-   };cancelled.remove(id);ui.post{reply(result)}
+   };cancelled.remove(id);ui.post{if(!closed.get())reply(result)}
   };return id
  }
 }

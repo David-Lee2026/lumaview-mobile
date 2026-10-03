@@ -26,6 +26,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private lateinit var top:HorizontalScrollView;private lateinit var bottom:LinearLayout;private lateinit var selectionRow:LinearLayout;private lateinit var clipPanel:LinearLayout
  private lateinit var seek:SeekBar;private lateinit var volume:SeekBar;private lateinit var time:TextView;private lateinit var status:TextView;private lateinit var playButton:Button;private lateinit var speedButton:Button;private lateinit var lockButton:Button;private lateinit var applyButton:Button
  private lateinit var timeline:ClipTimelineView;private lateinit var clipText:TextView
+ private var openRequest=0L;private var openToken=0L
  private var s=PlayerState();private var uri:Uri?=null;private var fileName="视频";private var crop:RoiRect?=null;private var userRotation=0
  private var enhancement=EnhanceSettings();private var priorPause=true;private var dragging=false;private var lastPreview=0L;private var priorSeekPause=true;private var controls=true;private var alwaysControls=false;private var touchLocked=false
  private var clipRange:ClipRange?=null;private var loop=false;private var gestureSeekStart=0L
@@ -37,7 +38,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private fun button(label:String,action:()->Unit)=Button(this).apply{text=label;isAllCaps=false;minWidth=48.dp;minimumHeight=48.dp;textSize=13f;setPadding(10.dp,0,10.dp,0);setOnClickListener{if(!touchLocked||this==lockButton){wake();action()}}}
  private fun text(value:String,size:Float=13f)=TextView(this).apply{this.text=value;textSize=size;setTextColor(0xffdfebfa.toInt());setPadding(4.dp,2.dp,4.dp,2.dp)}
  private fun row()=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
- private fun message(value:String){if(!isFinishing)AlertDialog.Builder(this).setTitle("LumaView").setMessage(value).setPositiveButton("知道了",null).show()}
+ private fun message(value:String){if(!isFinishing&&!isDestroyed)AlertDialog.Builder(this).setTitle("LumaView").setMessage(value).setPositiveButton("知道了",null).show()}
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState);window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);audio=getSystemService(AUDIO_SERVICE) as AudioManager;volumeControlStream=AudioManager.STREAM_MUSIC
   access=DocumentAccess(this);session=PlayerSession(this){state->render(state)}
@@ -45,6 +46,15 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   val u=intent.data
   if(u==null||u.scheme !in listOf("content","file")){message("请从文件页或系统文件选择器打开视频");startActivity(Intent(this,LibraryActivity::class.java));finish();return}
   uri=u;access.rememberGrant(u,intent.flags);open(u)
+ }
+ override fun onNewIntent(incoming:Intent){
+  super.onNewIntent(incoming)
+  val next=incoming.data
+  if(next==null||next.scheme !in listOf("file","content")){message("只接受授权视频文件");return}
+  if(busy){message("请先完成或取消当前导出，再打开其他视频");return}
+  intent=incoming;access.rememberGrant(next,incoming.flags)
+  overlay.cancel();crop=null;userRotation=0;clipRange=null;loop=false;selectionRow.visibility=View.GONE;clipPanel.visibility=View.GONE
+  enhancement=enhancement.copy(locked=false);open(next);wake()
  }
  private fun buildUi(){
   root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff0b1420.toInt())}
@@ -58,7 +68,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   val cs=HorizontalScrollView(this);val cr=row();cs.addView(cr)
   cr.addView(button("A=当前"){setMark(true)});cr.addView(button("B=当前"){setMark(false)});cr.addView(button("输入时间"){timeInput()});cr.addView(button("循环预览"){toggleLoop()});cr.addView(button("时间轴 +"){timeline.zoomAt(2.0)});cr.addView(button("时间轴 −"){timeline.zoomAt(.5)});cr.addView(button("原码流"){exportCopy()});cr.addView(button("精确导出"){exportExact()});clipPanel.addView(cs);root.addView(clipPanel)
   bottom=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff101d2d.toInt())};time=text("--:-- / --:--",13f);bottom.addView(time)
-  seek=SeekBar(this).apply{max=10000;contentDescription="播放进度"};bottom.addView(seek,LinearLayout.LayoutParams(-1,36.dp))
+  seek=SeekBar(this).apply{max=10000;contentDescription="播放进度"};bottom.addView(seek,LinearLayout.LayoutParams(-1,48.dp))
   val commands=row();commands.gravity=Gravity.CENTER;commands.addView(button("−10秒"){relative(-10_000_000)});playButton=button("播放"){session.pause(!s.paused)};commands.addView(playButton,LinearLayout.LayoutParams(0,48.dp,1f));commands.addView(button("+30秒"){relative(30_000_000)});speedButton=button("1.00×"){speedPanel()};commands.addView(speedButton);lockButton=button("锁定"){touchLocked=!touchLocked;overlay.locked=touchLocked;lockButton.text=if(touchLocked)"解锁" else "锁定";if(touchLocked){top.visibility=View.GONE;clipPanel.visibility=View.GONE;status.text="触控锁定：点击解锁恢复操作"}else showControls(true)};commands.addView(lockButton);bottom.addView(commands)
   val vr=row();vr.addView(button("音量"){val muted=audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0;audio.setStreamVolume(AudioManager.STREAM_MUSIC,if(muted)(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)/2).coerceAtLeast(1)else 0,0);updateVolume()})
   volume=SeekBar(this).apply{max=audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);contentDescription="媒体音量"};vr.addView(volume,LinearLayout.LayoutParams(0,48.dp,1f));vr.addView(button("横/竖屏"){requestedOrientation=if(resources.configuration.orientation==2)ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE});bottom.addView(vr);root.addView(bottom);setContentView(root)
@@ -71,16 +81,16 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   seek.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
    override fun onStartTrackingTouch(bar:SeekBar){if(touchLocked)return;dragging=true;priorSeekPause=s.paused;session.pause(true);wake()}
    override fun onProgressChanged(bar:SeekBar,value:Int,fromUser:Boolean){if(fromUser&&!touchLocked)s.durationUs?.let{preview((it*(value/10000.0)).toLong(),false)}}
-   override fun onStopTrackingTouch(bar:SeekBar){s.durationUs?.let{preview((it*(bar.progress/10000.0)).toLong(),true,priorSeekPause)};dragging=false}
+   override fun onStopTrackingTouch(bar:SeekBar){if(touchLocked)return;s.durationUs?.let{preview((it*(bar.progress/10000.0)).toLong(),true,priorSeekPause)};dragging=false}
   })
   volume.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
    override fun onProgressChanged(bar:SeekBar,value:Int,user:Boolean){if(user&&!touchLocked)audio.setStreamVolume(AudioManager.STREAM_MUSIC,value,0)}
-   override fun onStartTrackingTouch(bar:SeekBar){wake()};override fun onStopTrackingTouch(bar:SeekBar){}
+   override fun onStartTrackingTouch(bar:SeekBar){wake()};override fun onStopTrackingTouch(bar:SeekBar){if(touchLocked)return;}
   })
   timeline.onChange={range,end->clipRange=range;session.pause(true);val before=timeline.tag as? ClipRange;val target=if(before==null||before.startUs!=range.startUs)range.startUs else range.endUs;timeline.tag=range;preview(target,end);if(loop)session.setLoop(range);updateClip();wake()}
   videoFrame.addOnLayoutChangeListener{_,_,_,_,_,_,_,_,_->refreshMath()};updateVolume()
  }
- private fun open(u:Uri,allowCache:Boolean=false){access.openRead(u,allowCache){result->if(isDestroyed){result.getOrNull()?.close();return@openRead};result.onSuccess{lease->fileName=lease.name;uri=u;rememberRecent(u,lease.name);val pos=getSharedPreferences("history",0).getLong("position:$u",0);startAt=SystemClock.elapsedRealtime();session.open(lease,pos);session.enhance(enhancement,true)}.onFailure{e->if(e.message=="CACHE_CONSENT_REQUIRED")AlertDialog.Builder(this).setTitle("该文档不可直接定位").setMessage("需要复制到应用缓存后播放和剪辑。保留至少 256 MiB 空间；不会上传视频。").setPositiveButton("同意缓存"){_,_->open(u,true)}.setNegativeButton("取消",null).show()else message("打开失败：${e.message}\n文件移动或授权失效后请重新选择。")}}}
+ private fun open(u:Uri,allowCache:Boolean=false){access.cancel(openRequest);val token=++openToken;openRequest=access.openRead(u,allowCache){result->if(isDestroyed||isFinishing||token!=openToken){result.getOrNull()?.close();return@openRead};result.onSuccess{lease->fileName=lease.name;uri=u;rememberRecent(u,lease.name);val pos=getSharedPreferences("history",0).getLong("position:$u",0);startAt=SystemClock.elapsedRealtime();session.open(lease,pos);session.enhance(enhancement,true)}.onFailure{e->if(e.message=="CACHE_CONSENT_REQUIRED")AlertDialog.Builder(this).setTitle("该文档不可直接定位").setMessage("需要复制到应用缓存后播放和剪辑。保留至少 256 MiB 空间；不会上传视频。").setPositiveButton("同意缓存"){_,_->open(u,true)}.setNegativeButton("取消",null).show()else message("打开失败：${e.message}\n文件移动或授权失效后请重新选择。")}}}
  private fun rememberRecent(u:Uri,name:String){val pref=getSharedPreferences("history",0);val old=runCatching{JSONArray(pref.getString("recent","[]"))}.getOrDefault(JSONArray());val fresh=JSONArray().put(JSONObject().put("uri",u.toString()).put("name",name));for(i in 0 until old.length()){val v=old.getJSONObject(i);if(v.optString("uri")!=u.toString()&&fresh.length()<20)fresh.put(v)};pref.edit().putString("recent",fresh.toString()).apply()}
  private fun render(state:PlayerState){
   val wasPaused=s.paused;s=state;val duration=s.durationUs;seek.isEnabled=duration!=null&&duration>0&&s.seekable&&!touchLocked
@@ -88,12 +98,12 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   time.text="${formatTime(s.positionUs)} / ${formatTime(duration)}";playButton.text=if(s.paused)"▶ 播放" else "Ⅱ 暂停";speedButton.text=String.format(java.util.Locale.ROOT,"%.2f×",s.speed)
   val names=arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先")
   val r=s.receipt;val label=if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
-  status.text=s.error?:"$label${if(crop!=null)" · 区域增强" else ""}${if(quality>0)" · 负载降级 $quality" else ""} · ${s.width}×${s.height}"
+  status.text=s.error?:"$label${if(crop!=null)" · 区域放大" else ""}${if(quality>0)" · 负载降级 $quality" else ""} · ${s.width}×${s.height}"
   refreshMath();if(clipPanel.visibility==View.VISIBLE){if(clipRange==null&&duration!=null&&duration>0)clipRange=ClipRange(0,duration);updateClip()}
   if(s.paused)showControls(true)else if(wasPaused&&controls){handler.removeCallbacks(hide);handler.postDelayed(hide,3000)}
   if(Build.VERSION.SDK_INT>=29)thermal=runCatching{(getSystemService(POWER_SERVICE) as PowerManager).currentThermalStatus}.getOrNull()
   val now=SystemClock.elapsedRealtime();val frames=r?.get(13)?.toLong();val drop=s.dropped
-  val previous=quality;quality=governor.update(now,frames?.minus(lastFrames),drop?.minus(lastDrops),!s.paused&&!dragging&&now-startAt>5000&&now-lastSeekAt>2000,thermal);if(frames!=null)lastFrames=frames;if(drop!=null)lastDrops=drop
+  val previous=quality;quality=governor.update(now,frames?.minus(lastFrames),drop?.minus(lastDrops),!s.paused&&!s.buffering&&hasWindowFocus()&&!dragging&&now-startAt>5000&&now-lastSeekAt>2000,thermal);if(frames!=null)lastFrames=frames;if(drop!=null)lastDrops=drop
   if(previous!=quality)sendEnhancement()
  }
  private fun sendEnhancement(){val effective=when(quality){1->enhancement.copy(detail=0f);2->enhancement.copy(detail=0f,denoise=0f);3->enhancement.copy(mode=4,detail=0f,denoise=0f);4->enhancement.copy(bypass=true);else->enhancement};session.enhance(effective)}
@@ -108,8 +118,8 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private fun speedPanel(){val speeds=doubleArrayOf(.25,.5,.75,1.0,1.25,1.5,2.0);AlertDialog.Builder(this).setTitle("播放速度").setSingleChoiceItems(speeds.map{"${it}×"}.toTypedArray(),speeds.indexOfFirst{it==s.speed}){d,i->session.speed(speeds[i]);d.dismiss()}.show()}
  private fun enhancePanel(){
   val panel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(16.dp,4.dp,16.dp,8.dp)}
-  val modes=Spinner(this);modes.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先"));modes.setSelection(enhancement.mode);panel.addView(modes,LinearLayout.LayoutParams(-1,48.dp));modes.onItemSelectedListener=object:AdapterView.OnItemSelectedListener{override fun onNothingSelected(p:AdapterView<*>?){};override fun onItemSelected(p:AdapterView<*>?,v:View?,i:Int,id:Long){enhancement=enhancement.copy(mode=i,bypass=false,locked=false);sendEnhancement()}}
-  fun slider(label:String,min:Int,max:Int,value:Int,apply:(Int)->Unit){val title=text("$label：$value",13f);panel.addView(title);val bar=SeekBar(this).apply{this.max=max-min;progress=value-min};panel.addView(bar,LinearLayout.LayoutParams(-1,42.dp));bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(b:SeekBar){};override fun onStopTrackingTouch(b:SeekBar){};override fun onProgressChanged(b:SeekBar,v:Int,user:Boolean){if(user){title.text="$label：${v+min}";apply(v+min);sendEnhancement()}}})}
+  val modes=Spinner(this);modes.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先"));modes.setSelection(enhancement.mode);panel.addView(modes,LinearLayout.LayoutParams(-1,48.dp));modes.onItemSelectedListener=object:AdapterView.OnItemSelectedListener{override fun onNothingSelected(p:AdapterView<*>?){};override fun onItemSelected(p:AdapterView<*>?,v:View?,i:Int,id:Long){enhancement=enhancement.selectMode(i);sendEnhancement()}}
+  fun slider(label:String,min:Int,max:Int,value:Int,apply:(Int)->Unit){val title=text("$label：$value",13f);panel.addView(title);val bar=SeekBar(this).apply{this.max=max-min;progress=value-min};panel.addView(bar,LinearLayout.LayoutParams(-1,48.dp));bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(b:SeekBar){};override fun onStopTrackingTouch(b:SeekBar){};override fun onProgressChanged(b:SeekBar,v:Int,user:Boolean){if(user){title.text="$label：${v+min}";apply(v+min);sendEnhancement()}}})}
   slider("曝光偏移（百分之一EV）",-100,100,(enhancement.manualEv*100).toInt()){enhancement=enhancement.copy(manualEv=it/100f,locked=false)}
   slider("暗部／局部提亮",0,100,enhancement.shadows.toInt()){enhancement=enhancement.copy(shadows=it.toFloat())}
   slider("对比度",-25,25,enhancement.contrast.toInt()){enhancement=enhancement.copy(contrast=it.toFloat())}
@@ -130,14 +140,14 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  }
  private fun tracks(type:String){val list=s.tracks.filter{it.type==type};val labels=arrayOf("关闭")+list.map{"${it.id} · ${it.title}"};AlertDialog.Builder(this).setTitle(if(type=="audio")"音轨" else "字幕").setItems(labels){_,i->session.selectTrack(if(type=="audio")"audio" else "sub",if(i==0)null else list[i-1].id)}.show()}
  private fun requestedTracks():IntArray {fun id(type:String):Int{val all=s.tracks.filter{it.type==type};val selected=all.firstOrNull{it.selected};if(selected==null)return if(type=="video")-1 else -2;return selected.ffIndex?:if(all.size==1)-1 else throw IllegalStateException("多轨道编号未确认，请重新打开视频后选择轨道")};return intArrayOf(id("video"),id("audio"),id("sub"))}
- private fun startProgress(title:String){busy=true;cancel=AtomicBoolean(false);session.pause(true);dialog=ProgressDialog(this).apply{setTitle(title);setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);max=100;setCancelable(false);setButton(DialogInterface.BUTTON_NEGATIVE,"取消"){_,_->cancelJob()};show()};wake()}
+ private fun startProgress(title:String){NativeExporter.prepare();busy=true;cancel=AtomicBoolean(false);session.pause(true);dialog=ProgressDialog(this).apply{setTitle(title);setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);max=100;setCancelable(false);setButton(DialogInterface.BUTTON_NEGATIVE,"取消"){_,_->cancelJob()};show()};wake()}
  private fun closeProgress(){dialog?.dismiss();dialog=null}
  private fun cancelJob(){cancel.set(true);NativeExporter.cancel();exact?.cancel();status.text="正在安全取消…"}
  private fun failJob(t:Throwable){closeProgress();busy=false;temporary?.delete();temporary=null;exact=null;session.resumeAfterExport();message("未完成：${t.message}")}
  private fun rangeReady():ClipRange?{val r=clipRange;if(busy){message("已有导出任务，请先完成或取消");return null};if(r==null||!r.valid(s.durationUs)){message("请先选择有效的 A／B 范围");return null};return r}
  private fun exportCopy(){val r=rangeReady()?:return;val source=uri?:return;val ids=try{requestedTracks()}catch(e:Exception){message(e.message?:"轨道错误");return};startProgress("分析可独立解码的边界")
   val poll=object:Runnable{override fun run(){if(!busy||dialog==null)return;dialog?.progress=(NativeExporter.progress()*100).toInt();handler.postDelayed(this,400)}};handler.post(poll)
-  access.openRead(source){opened->opened.onSuccess{lease->work.execute{val result=runCatching{val o=JSONObject(NativeExporter.analyze(lease.fd,ids[0],ids[1],ids[2],r.startUs,r.endUs));if(o.has("error"))error(o.getString("error"));o};lease.close();handler.post{closeProgress();if(cancel.get()){busy=false;return@post};result.onSuccess{plan->confirmCopy(plan)}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
+  access.openRead(source){opened->opened.onSuccess{lease->work.execute{val result=runCatching{check(!cancel.get()){ "已取消" };val o=JSONObject(NativeExporter.analyze(lease.fd,ids[0],ids[1],ids[2],r.startUs,r.endUs));if(o.has("error"))error(o.getString("error"));o};lease.close();handler.post{closeProgress();if(cancel.get()){busy=false;return@post};result.onSuccess{plan->confirmCopy(plan)}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
  }
  private fun confirmCopy(plan:JSONObject){
   val a=plan.getLong("startUs");val b=plan.getLong("endUs");val container=plan.getString("container")
@@ -145,7 +155,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
    .setNegativeButton("取消"){_,_->busy=false}.setPositiveButton("导出"){_,_->writeCopy(plan,container)}.setNeutralButton("改用 MKV"){_,_->writeCopy(plan,"matroska")}.setOnCancelListener{busy=false}.show()
  }
  private fun writeCopy(plan:JSONObject,container:String){val source=uri?:return;startProgress("复制原始压缩数据");saveExtension=if(container=="mp4")"mp4" else "mkv";saveMime=if(container=="mp4")"video/mp4" else "video/x-matroska";val out=File(cacheDir,"clip-${System.nanoTime()}.$saveExtension");temporary=out
-  access.openRead(source){result->result.onSuccess{lease->work.execute{val done=runCatching{val json=JSONObject(NativeExporter.write(lease.fd,plan.getInt("video"),plan.getInt("audio").let{if(it<0)-2 else it},plan.getInt("subtitle").let{if(it<0)-2 else it},plan.getLong("startUs"),plan.getLong("endUs"),out.absolutePath,container));if(json.has("error"))error(json.getString("error"));json.toString()};lease.close();handler.post{done.onSuccess{outputSummary="原码流导出\n${formatTime(plan.getLong("startUs"),true)} — ${formatTime(plan.getLong("endUs"),true)}\n$it";chooseDestination()}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
+  access.openRead(source){result->result.onSuccess{lease->work.execute{val done=runCatching{check(!cancel.get()){ "已取消" };val json=JSONObject(NativeExporter.write(lease.fd,plan.getInt("video"),plan.getInt("audio").let{if(it<0)-2 else it},plan.getInt("subtitle").let{if(it<0)-2 else it},plan.getLong("startUs"),plan.getLong("endUs"),out.absolutePath,container));if(json.has("error"))error(json.getString("error"));json.toString()};lease.close();handler.post{done.onSuccess{outputSummary="原码流导出\n${formatTime(plan.getLong("startUs"),true)} — ${formatTime(plan.getLong("endUs"),true)}\n$it";chooseDestination()}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
   val poll=object:Runnable{override fun run(){if(!busy||dialog==null)return;dialog?.progress=(NativeExporter.progress()*100).toInt();handler.postDelayed(this,400)}};handler.post(poll)
  }
  private fun exportExact(){val r=rangeReady()?:return;val source=uri?:return
@@ -167,6 +177,6 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  override fun onSurfaceTextureUpdated(st:SurfaceTexture){}
  override fun onPause(){super.onPause();if(::session.isInitialized){session.pause(true);uri?.let{s.positionUs?.let{pos->getSharedPreferences("history",0).edit().putLong("position:$it",pos).apply()}}}}
  override fun onStop(){super.onStop();if(busy&&!pickingDestination&&!isChangingConfigurations)cancelJob()}
- override fun onDestroy(){handler.removeCallbacksAndMessages(null);if(::session.isInitialized)session.close();if(busy)cancelJob();super.onDestroy()}
+ override fun onDestroy(){if(busy)cancelJob();handler.removeCallbacksAndMessages(null);if(::access.isInitialized)access.close();work.shutdown();if(::session.isInitialized)session.close();dialog?.dismiss();dialog=null;super.onDestroy()}
  @Deprecated("Back") override fun onBackPressed(){when{touchLocked->{touchLocked=false;overlay.locked=false;lockButton.text="锁定";wake()};overlay.selecting->{overlay.cancel();selectionRow.visibility=View.GONE;session.pause(priorPause)};clipPanel.visibility==View.VISIBLE->toggleClip();else->super.onBackPressed()}}
 }

@@ -55,17 +55,19 @@ fun formatTime(us:Long?,precise:Boolean=false):String {
  if(us==null||us<0)return "--:--"
  val s=us/1_000_000;val h=s/3600;val m=s/60%60;val sec=s%60
  val b=if(h>0)String.format(Locale.ROOT,"%d:%02d:%02d",h,m,sec)else String.format(Locale.ROOT,"%02d:%02d",m,sec)
- return if(precise)b+String.format(Locale.ROOT,".%03d",us/1000%1000)else b
+ return if(precise)b+String.format(Locale.ROOT,".%06d",us%1000000)else b
 }
+private fun positiveAdd(a:Long,b:Long):Long { require(a>=0&&b>=0&&a<=Long.MAX_VALUE-b);return a+b }
+private fun positiveMultiply(a:Long,b:Long):Long { require(a>=0&&b>=0&&(b==0L||a<=Long.MAX_VALUE/b));return a*b }
 fun parseTime(value:String):Long?=try {
  val p=value.trim().split(':');if(p.size !in 1..3)null else {
   val tail=p.last().split('.');require(tail.size<=2&&tail[0].all{it.isDigit()}&&tail[0].isNotEmpty())
   val seconds=tail[0].toLong();require(p.size==1||seconds<60)
   var total=seconds
-  if(p.size>=2){val minutes=p[p.size-2].toLong();require(minutes>=0&&(p.size<3||minutes<60));total=Math.addExact(total,Math.multiplyExact(minutes,60))}
-  if(p.size==3){val hours=p[0].toLong();require(hours>=0);total=Math.addExact(total,Math.multiplyExact(hours,3600))}
+  if(p.size>=2){val minutes=p[p.size-2].toLong();require(minutes>=0&&(p.size<3||minutes<60));total=positiveAdd(total,positiveMultiply(minutes,60))}
+  if(p.size==3){val hours=p[0].toLong();require(hours>=0);total=positiveAdd(total,positiveMultiply(hours,3600))}
   val frac=if(tail.size==2){require(tail[1].length in 1..6&&tail[1].all{it.isDigit()});tail[1].padEnd(6,'0').toLong()}else 0
-  Math.addExact(Math.multiplyExact(total,1_000_000),frac)
+  positiveAdd(positiveMultiply(total,1_000_000),frac)
  }
 }catch(_:Exception){null}
 object ExposureReference {
@@ -79,6 +81,7 @@ object ExposureReference {
  fun tone(v:Double,ev:Double):Double {val x=v.coerceIn(0.0,1.0);val g=2.0.pow(ev.coerceIn(0.0,4.0));return x*g/(1+x*(g-1))}
 }
 data class EnhanceSettings(val mode:Int=1,val manualEv:Float=0f,val shadows:Float=60f,val contrast:Float=0f,val saturation:Float=100f,val denoise:Float=40f,val detail:Float=8f,val bypass:Boolean=false,val locked:Boolean=false) {
+ fun selectMode(value:Int)=if(value==mode)this else copy(mode=value.coerceIn(0,4),bypass=false,locked=false)
  fun values()=floatArrayOf(mode.toFloat(),manualEv.coerceIn(-1f,1f),shadows.coerceIn(0f,100f),contrast.coerceIn(-25f,25f),saturation.coerceIn(0f,150f),denoise.coerceIn(0f,100f),detail.coerceIn(0f,30f),if(bypass)1f else 0f,if(locked)1f else 0f)
 }
 /** Only valid playback windows count. Unknown counters are not zero drops. */

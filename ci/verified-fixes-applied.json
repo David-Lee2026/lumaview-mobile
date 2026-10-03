@@ -1,0 +1,18 @@
+{
+  "app/src/main/java/org/lumaview/mobile/Core.kt": "99037564a24df636a627a05e2552fc4d33b24a83e909c1c3258f3480bb0144dd",
+  "app/src/main/java/org/lumaview/mobile/export/NativeExporter.kt": "0245bf95550d256334dac4d21f264cb40dde0fc7035a3f8422a563e81dd81fa2",
+  "app/src/main/java/org/lumaview/mobile/export/ExactExporter.kt": "a1273e1d231c45d038849f3b2f5073ac88b7486bcd89e24302476fb29a786ff3",
+  "app/src/main/java/org/lumaview/mobile/player/PlayerSession.kt": "332c767d80e3cc9cbbe066ae63f54c920a668170e72691bfe62b7b0d90733a3b",
+  "app/src/main/java/org/lumaview/mobile/player/NativeStage.kt": "a02da8315fc6ac70e57157fde32d83fdf9b0957d167cb4cd437429b7c92c9831",
+  "app/src/main/java/org/lumaview/mobile/storage/OutputTransaction.kt": "61d724af164c97acb9d3cad25dacfa18ff94c8e03b41e7ab725be67cb03b55cb",
+  "app/src/main/java/org/lumaview/mobile/storage/DocumentAccess.kt": "d21eb6ce24ec8a47640e84aec951615c2c27d433084dd714ea689b7d13093142",
+  "app/src/main/java/org/lumaview/mobile/ui/ClipTimelineView.kt": "95a4650fb35c788a228fe7a3b25f093e2dd2862b4261f64dd08d448e5d881c87",
+  "app/src/main/java/org/lumaview/mobile/ui/PlayerActivity.kt": "b5f47dc5e0f30a657435efd56e7eadd35766eb5367e7d9736ce4a74d9550c825",
+  "app/src/main/java/org/lumaview/mobile/ui/LibraryActivity.kt": "971f2a25bbe906ecb0e9333b4bfde8cfed444392f30eb9d06733760acfafcabc",
+  "app/src/main/java/org/lumaview/mobile/viewport/RoiOverlayView.kt": "539d10b508d21706a7eb86e235f4319af58d6ed2401c371efb13ec792b45ca44",
+  "shaders/lvm/mobile.glsl": "f789787e6608d2863f093f93c8bcb23112ceff06eddd2e69967b7911886786c6",
+  "ci/patch_engine.py": "de328c322f435dda672ad80767ae2bb2ce3461ef7ae806a5acba3b9d6d5b5dcd",
+  "app/src/main/jni/main.cpp": "2f4a1d859b3ff7e2a18d522820592a6e0e74430412a19e0a9bb65ce2fcb85987",
+  "app/src/main/jni/lumaview/export_bridge.cpp": "bcbada8c376ac3f56b05389cd4046a29aec55868b662e475691556df8863b820",
+  "app/src/main/jni/lumaview/frame_counter.h": "6a269e8496d8b963dde8c6b7ee15628a1c76ef987677c60080ca55d145e803fa"
+}

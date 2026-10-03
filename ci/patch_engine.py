@@ -66,7 +66,8 @@ change('player/client.c','    m_config_set_profile(mpctx->mconfig, "libmpv", 0);
     mpctx->global->lvm=lvm;
     m_config_set_profile(mpctx->mconfig, "libmpv", 0);''')
 change('meson.build',"headers = ['include/mpv/client.h', 'include/mpv/render.h',","headers = ['include/mpv/lvm_ext.h', 'include/mpv/client.h', 'include/mpv/render.h',")
-change('video/out/gpu/video.c','#include "video.h"','#include "video.h"\n#include "common/global.h"\n#include "common/lvm_shared.h"')
+write('video/out/gpu/lvm_counter.h',Path('app/src/main/jni/lumaview/frame_counter.h').read_text())
+change('video/out/gpu/video.c','#include "video.h"','#include "video.h"\n#include "common/global.h"\n#include "common/lvm_shared.h"\n#include "lvm_counter.h"')
 change('video/out/gpu/video.c','    struct gl_lcms *cms;',r'''    struct gl_lcms *cms;
     struct lvm_frame_v1 lvm;
     struct ra_tex *lvm_history;
@@ -74,7 +75,7 @@ change('video/out/gpu/video.c','    struct gl_lcms *cms;',r'''    struct gl_lcms
     double lvm_pts;
     float lvm_dt, lvm_roi_lo[2], lvm_roi_hi[2];
     int lvm_work_w, lvm_work_h;
-    uint64_t lvm_rendered;''')
+    struct lvm_frame_counter lvm_frames;''')
 # Stable texture binding for the GPU-only previous exposure state.
 change('video/out/gpu/video.c','        struct image bind_img;',r'''        if (strcmp(bind_name, "LVM_HISTORY") == 0 && p->lvm_history) {
             struct image prev=image_wrap(p->lvm_history,PLANE_RGB,4);
@@ -177,7 +178,7 @@ if 'lvm_receipt_v1 result=' not in part:
           .lock_applied=(p->lvm.flags&2)&&p->lvm_history_valid,
           .actual_rect={p->src_rect.x0,p->src_rect.y0,p->src_rect.x1,p->src_rect.y1},
           .resource_bytes=0, /* unavailable: not a measured allocator counter */
-          .rendered_frames=++p->lvm_rendered};
+          .rendered_frames=lvm_count_frame(&p->lvm_frames,frame->frame_id,!p->broken_frame)};
         struct lvm_shared *shared=p->global->lvm;mp_mutex_lock(&shared->lock);
         shared->receipt=result;mp_mutex_unlock(&shared->lock);
     }
