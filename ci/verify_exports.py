@@ -26,4 +26,6 @@ for mode in ['copy','exact']:
   assert all(s['codec_name']=='aac' for s in data['streams'] if s['codec_type']=='audio')
   assert '视频编码器：' in report['exactResult']
 roi=json.loads((out/'ROI_RESULT.json').read_text());assert roi['outsideIndependence'] and roi['insideResponse'];checks['roi']=roi
-checks['huaweiPhysicalValidation']='NOT_RUN';checks['environment']='Android API 35 x86_64 emulator';print(json.dumps(checks,indent=2))
+for name in ['DISPLAY_RESULT','RECOVERY_RESULT','PROGRESS_RESULT']:
+ result=json.loads((out/(name+'.json')).read_text());assert result['physicalDevice'] is False;checks[name]=result
+checks['huaweiPhysicalValidation']='NOT_RUN';checks['environment']=json.loads(Path('release-evidence/instrumentation-result.json').read_text())['environment'];print(json.dumps(checks,indent=2))

@@ -4,6 +4,8 @@ import android.app.*
 import android.content.*
 import android.content.pm.ActivityInfo
 import android.graphics.SurfaceTexture
+import android.graphics.Typeface
+import android.text.TextUtils
 import android.media.AudioManager
 import android.net.Uri
 import android.os.*
@@ -32,6 +34,8 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private val handler=Handler(Looper.getMainLooper());private val work=Executors.newSingleThreadExecutor();private var exact:ExactExporter?=null
  private var busy=false;private var pickingDestination=false;private var temporary:File?=null;private var outputSummary="";private var saveMime="video/mp4";private var saveExtension="mp4";private var dialog:ProgressDialog?=null;private var cancel=AtomicBoolean(false);private var nativeToken=0L
  private val governor=QualityGovernor();private var lastFrames=0L;private var lastDrops=0L;private var startAt=0L;private var lastSeekAt=0L;private var quality=0;private var thermal:Int?=null
+ private val progressClock=PlaybackProgress()
+ private val progressTick=object:Runnable {override fun run(){if(!isDestroyed){drawProgress();handler.postDelayed(this,50)}}}
  private val hide=Runnable{if(!s.paused&&!overlay.selecting&&clipPanel.visibility!=View.VISIBLE&&!alwaysControls&&!touchLocked&&!busy)showControls(false)}
  private val Int.dp get()=(this*resources.displayMetrics.density).toInt()
  private fun button(label:String,action:()->Unit)=Button(this).apply{text=label;isAllCaps=false;minWidth=48.dp;minimumHeight=48.dp;textSize=13f;setPadding(10.dp,0,10.dp,0);setOnClickListener{if(!touchLocked||this==lockButton){wake();action()}}}
@@ -41,7 +45,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState);window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);audio=getSystemService(AUDIO_SERVICE) as AudioManager;volumeControlStream=AudioManager.STREAM_MUSIC
   access=DocumentAccess(this);session=PlayerSession(this){state->render(state)}
-  buildUi()
+  buildUi();handler.post(progressTick)
   val u=intent.data
   if(u==null||u.scheme !in listOf("content","file")){message("请从文件页或系统文件选择器打开视频");startActivity(Intent(this,LibraryActivity::class.java));finish();return}
   uri=u;access.rememberGrant(u,intent.flags);open(u)
@@ -57,15 +61,15 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private fun buildUi(){
   root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff0b1420.toInt())}
   top=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false};val tools=row();top.addView(tools)
-  tools.addView(button("← 文件"){finish()});tools.addView(button("画面增强"){enhancePanel()});tools.addView(button("区域放大"){beginRoi()});tools.addView(button("全画面"){resetView()});tools.addView(button("片段剪辑"){toggleClip()});tools.addView(button("旋转"){userRotation=(userRotation+90)%360;crop=null;overlay.current=null;enhancement=enhancement.copy(locked=false);session.viewport(null,userRotation);refreshMath()});tools.addView(button("更多"){more()});root.addView(top,LinearLayout.LayoutParams(-1,48.dp))
+  tools.addView(button("← 文件"){finish()});tools.addView(button("画面增强"){enhancePanel()});tools.addView(button("区域放大"){beginRoi()});tools.addView(button("全画面"){resetView()});tools.addView(button("片段剪辑"){toggleClip()});tools.addView(button("旋转"){userRotation=(userRotation+90)%360;crop=null;overlay.current=null;enhancement=enhancement.copy(locked=false);session.viewport(null,userRotation);refreshMath()});tools.addView(button("解码设置"){decoderPanel()});tools.addView(button("更多"){more()});root.addView(top,LinearLayout.LayoutParams(-1,48.dp))
   selectionRow=row();selectionRow.addView(text("选框后点应用"),LinearLayout.LayoutParams(0,48.dp,1f));applyButton=button("应用"){val r=overlay.apply();if(r!=null){crop=r;session.viewport(r,userRotation);session.pause(priorPause);selectionRow.visibility=View.GONE;refreshMath()}};selectionRow.addView(applyButton);selectionRow.addView(button("取消"){overlay.cancel();selectionRow.visibility=View.GONE;session.pause(priorPause);refreshMath()});selectionRow.visibility=View.GONE;root.addView(selectionRow)
   videoFrame=FrameLayout(this).apply{setBackgroundColor(0xff000000.toInt())};video=TextureView(this).apply{surfaceTextureListener=this@PlayerActivity};videoFrame.addView(video,FrameLayout.LayoutParams(-1,-1));overlay=RoiOverlayView(this);videoFrame.addView(overlay,FrameLayout.LayoutParams(-1,-1));root.addView(videoFrame,LinearLayout.LayoutParams(-1,0,1f))
-  status=text("正在打开视频…",12f);root.addView(status)
+  status=text("正在打开视频…",12f).apply{isSingleLine=true;ellipsize=TextUtils.TruncateAt.END};root.addView(status)
   clipPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff172437.toInt());visibility=View.GONE}
   clipText=text("A — B",12f);clipPanel.addView(clipText);timeline=ClipTimelineView(this);clipPanel.addView(timeline,LinearLayout.LayoutParams(-1,84.dp))
   val cs=HorizontalScrollView(this);val cr=row();cs.addView(cr)
   cr.addView(button("A=当前"){setMark(true)});cr.addView(button("B=当前"){setMark(false)});cr.addView(button("输入时间"){timeInput()});cr.addView(button("循环预览"){toggleLoop()});cr.addView(button("时间轴 +"){timeline.zoomAt(2.0)});cr.addView(button("时间轴 −"){timeline.zoomAt(.5)});cr.addView(button("原码流"){exportCopy()});cr.addView(button("精确导出"){exportExact()});clipPanel.addView(cs);root.addView(clipPanel)
-  bottom=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff101d2d.toInt())};time=text("--:-- / --:--",13f);bottom.addView(time)
+  bottom=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff101d2d.toInt())};time=text("--:-- / --:--",13f).apply{typeface=Typeface.MONOSPACE};bottom.addView(time)
   seek=SeekBar(this).apply{max=10000;contentDescription="播放进度"};bottom.addView(seek,LinearLayout.LayoutParams(-1,36.dp))
   val commands=row();commands.gravity=Gravity.CENTER;commands.addView(button("−10秒"){relative(-10_000_000)});playButton=button("播放"){session.pause(!s.paused)};commands.addView(playButton,LinearLayout.LayoutParams(0,48.dp,1f));commands.addView(button("+30秒"){relative(30_000_000)});speedButton=button("1.00×"){speedPanel()};commands.addView(speedButton);lockButton=button("锁定"){touchLocked=!touchLocked;overlay.locked=touchLocked;lockButton.text=if(touchLocked)"解锁" else "锁定";if(touchLocked){top.visibility=View.GONE;clipPanel.visibility=View.GONE;status.text="触控锁定：点击解锁恢复操作"}else showControls(true)};commands.addView(lockButton);bottom.addView(commands)
   val vr=row();vr.addView(button("音量"){val muted=audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0;audio.setStreamVolume(AudioManager.STREAM_MUSIC,if(muted)(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)/2).coerceAtLeast(1)else 0,0);updateVolume()})
@@ -91,11 +95,11 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private fun open(u:Uri,allowCache:Boolean=false){openLeaseId?.let{access.cancel(it)};val ticket=++openRequest;openLeaseId=access.openRead(u,allowCache){result->if(isDestroyed||ticket!=openRequest){result.getOrNull()?.close();return@openRead};result.onSuccess{lease->fileName=lease.name;uri=u;rememberRecent(u,lease.name);val pos=getSharedPreferences("history",0).getLong("position:$u",0);startAt=SystemClock.elapsedRealtime();session.open(lease,pos);session.enhance(enhancement,true)}.onFailure{e->if(e.message=="CACHE_CONSENT_REQUIRED")AlertDialog.Builder(this).setTitle("该文档不可直接定位").setMessage("需要复制到应用缓存后播放和剪辑。保留至少 256 MiB 空间；不会上传视频。").setPositiveButton("同意缓存"){_,_->open(u,true)}.setNegativeButton("取消",null).show()else message("打开失败：${e.message}\n文件移动或授权失效后请重新选择。")}}}
  private fun rememberRecent(u:Uri,name:String){val pref=getSharedPreferences("history",0);val old=runCatching{JSONArray(pref.getString("recent","[]"))}.getOrDefault(JSONArray());val fresh=JSONArray().put(JSONObject().put("uri",u.toString()).put("name",name));for(i in 0 until old.length()){val v=old.getJSONObject(i);if(v.optString("uri")!=u.toString()&&fresh.length()<20)fresh.put(v)};pref.edit().putString("recent",fresh.toString()).apply()}
  private fun render(state:PlayerState){
-  val wasPaused=s.paused;s=state;val duration=s.durationUs;seek.isEnabled=duration!=null&&duration>0&&s.seekable&&!touchLocked
-  if(!dragging&&duration!=null&&duration>0)seek.progress=((s.positionUs?:0)*10000.0/duration).toInt().coerceIn(0,10000)
-  time.text="${formatTime(s.positionUs)} / ${formatTime(duration)}";playButton.text=if(s.paused)"▶ 播放" else "Ⅱ 暂停";speedButton.text=String.format(java.util.Locale.ROOT,"%.2f×",s.speed)
+  val previousPosition=s.positionUs;val wasPaused=s.paused;s=state;val duration=s.durationUs;seek.isEnabled=duration!=null&&duration>0&&s.seekable&&!touchLocked
+  if(loop&&previousPosition!=null&&s.positionUs!=null&&s.positionUs!!<previousPosition-10_000)progressClock.seek(s.positionUs!!,SystemClock.elapsedRealtime())
+  progressClock.sample(s.generation,s.positionUs,duration,s.paused,s.speed,SystemClock.elapsedRealtime());drawProgress();playButton.text=if(s.paused)"▶ 播放" else "Ⅱ 暂停";speedButton.text=String.format(java.util.Locale.ROOT,"%.2f×",s.speed)
   val names=arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先")
-  val r=s.receipt;val label=if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==3.0)"源尺寸超出增强预算：保持原画" else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
+  val r=s.receipt;val label=if(s.rendererTier>=2)"增强不可用：已恢复原画" else if(s.rendererTier==1&&r!=null&&r[5]>0)"兼容增强（降噪／细节已停用）" else if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==3.0)"源尺寸超出增强预算：保持原画" else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
   status.text=s.error?:"${playbackLabel(s.paused,s.speed)} · $label${if(crop!=null)" · 区域增强" else ""}${if(quality>0)" · 负载降级 $quality" else ""} · ${s.width}×${s.height}"
   refreshMath();if(clipPanel.visibility==View.VISIBLE){if(clipRange==null&&duration!=null&&duration>0)clipRange=ClipRange(0,duration);updateClip()}
   if(s.paused)showControls(true)else if(wasPaused&&controls){handler.removeCallbacks(hide);handler.postDelayed(hide,3000)}
@@ -104,11 +108,18 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   val previous=quality;quality=governor.update(now,frames?.minus(lastFrames),drop?.minus(lastDrops),!s.paused&&!dragging&&now-startAt>5000&&now-lastSeekAt>2000,thermal);if(frames!=null)lastFrames=frames;if(drop!=null)lastDrops=drop
   if(previous!=quality)sendEnhancement()
  }
+ private fun drawProgress(){
+  if(!::seek.isInitialized)return
+  val position=progressClock.position(SystemClock.elapsedRealtime());val duration=s.durationUs
+  if(!dragging&&position!=null&&duration!=null&&duration>0)seek.progress=(position*10000.0/duration).roundToInt().coerceIn(0,10000)
+  time.text="${formatTime(position)} / ${formatTime(duration)}"
+ }
+ private fun decoderPanel(){AlertDialog.Builder(this).setTitle("视频解码").setSingleChoiceItems(arrayOf("兼容播放（软件解码，默认）","硬件加速（复制解码）"),if(s.decoderMode=="no")0 else 1){d,i->session.decoder(if(i==0)"no" else "mediacodec-copy");d.dismiss()}.setNegativeButton("关闭",null).show()}
  private fun sendEnhancement(){val effective=when(quality){1->enhancement.copy(detail=0f);2->enhancement.copy(detail=0f,denoise=0f);3->enhancement.copy(mode=4,detail=0f,denoise=0f);4->enhancement.copy(bypass=true);else->enhancement};session.enhance(effective)}
  private fun sourceBounds()=s.sourceRect?:RoiRect(0.0,0.0,s.width.toDouble(),s.height.toDouble())
  private fun refreshMath(){if(s.width<=0||s.height<=0||videoFrame.width<=0||videoFrame.height<=0)return;overlay.math=RoiMath(s.width,s.height,videoFrame.width,videoFrame.height,s.rotation,s.sar,crop?:sourceBounds(),sourceBounds());overlay.current=crop;overlay.invalidate()}
- private fun preview(us:Long,end:Boolean,restore:Boolean?=null){val now=SystemClock.elapsedRealtime();if(end||now-lastPreview>=150){lastPreview=now;lastSeekAt=now;session.seek(us,end,restore)}}
- private fun relative(delta:Long){if(touchLocked)return;session.seek(((s.positionUs?:0)+delta).coerceAtLeast(0));lastSeekAt=SystemClock.elapsedRealtime();wake()}
+ private fun preview(us:Long,end:Boolean,restore:Boolean?=null){val now=SystemClock.elapsedRealtime();if(end||now-lastPreview>=150){lastPreview=now;lastSeekAt=now;progressClock.seek(us.coerceIn(0,s.durationUs?:Long.MAX_VALUE),now);session.seek(us,end,restore)}}
+ private fun relative(delta:Long){if(touchLocked)return;val target=((s.positionUs?:0)+delta).coerceIn(0,s.durationUs?:Long.MAX_VALUE);lastSeekAt=SystemClock.elapsedRealtime();progressClock.seek(target,lastSeekAt);session.seek(target);wake()}
  private fun updateVolume(){if(::volume.isInitialized)volume.progress=audio.getStreamVolume(AudioManager.STREAM_MUSIC)}
  private fun wake(){showControls(true);handler.removeCallbacks(hide);handler.postDelayed(hide,3000)}
  private fun showControls(value:Boolean){controls=value;top.visibility=if(value&&!touchLocked)View.VISIBLE else View.GONE;bottom.visibility=if(value||touchLocked)View.VISIBLE else View.GONE;time.visibility=if(touchLocked)View.GONE else View.VISIBLE;seek.isEnabled=!touchLocked&&s.seekable;volume.isEnabled=!touchLocked;playButton.isEnabled=!touchLocked;speedButton.isEnabled=!touchLocked;if(value)handler.removeCallbacks(hide)}
@@ -118,7 +129,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private fun enhancePanel(){
   val panel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(16.dp,4.dp,16.dp,8.dp)}
   val modes=Spinner(this);modes.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先"));modes.setSelection(enhancement.mode);panel.addView(modes,LinearLayout.LayoutParams(-1,48.dp));modes.onItemSelectedListener=object:AdapterView.OnItemSelectedListener{override fun onNothingSelected(p:AdapterView<*>?){};override fun onItemSelected(p:AdapterView<*>?,v:View?,i:Int,id:Long){enhancement=enhancement.copy(mode=i,bypass=false,locked=false);sendEnhancement()}}
-  fun slider(label:String,min:Int,max:Int,value:Int,apply:(Int)->Unit){val title=text("$label：$value",13f);panel.addView(title);val bar=SeekBar(this).apply{this.max=max-min;progress=value-min};panel.addView(bar,LinearLayout.LayoutParams(-1,42.dp));bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(b:SeekBar){};override fun onStopTrackingTouch(b:SeekBar){};override fun onProgressChanged(b:SeekBar,v:Int,user:Boolean){if(user){title.text="$label：${v+min}";apply(v+min);sendEnhancement()}}})}
+  fun slider(label:String,min:Int,max:Int,value:Int,apply:(Int)->Unit){val title=text("$label：$value",13f);panel.addView(title);val bar=SeekBar(this).apply{this.max=max-min;progress=value-min;isEnabled=s.rendererTier==0||(!label.startsWith("保边")&&!label.startsWith("细节"))};panel.addView(bar,LinearLayout.LayoutParams(-1,42.dp));bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(b:SeekBar){};override fun onStopTrackingTouch(b:SeekBar){};override fun onProgressChanged(b:SeekBar,v:Int,user:Boolean){if(user){title.text="$label：${v+min}";apply(v+min);sendEnhancement()}}})}
   slider("曝光偏移（百分之一EV）",-100,100,(enhancement.manualEv*100).toInt()){enhancement=enhancement.copy(manualEv=it/100f,locked=false)}
   slider("暗部／局部提亮",0,100,enhancement.shadows.toInt()){enhancement=enhancement.copy(shadows=it.toFloat())}
   slider("对比度",-25,25,enhancement.contrast.toInt()){enhancement=enhancement.copy(contrast=it.toFloat())}
@@ -135,7 +146,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private fun toggleLoop(){val r=clipRange?:return;loop=!loop;session.setLoop(if(loop)r else null);if(loop){session.seek(r.startUs);session.pause(false)};updateClip()}
  private fun timeInput(){val r=clipRange?:return;val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(16.dp,0,16.dp,0)};val a=EditText(this).apply{setText(formatTime(r.startUs,true));hint="起点 HH:MM:SS.ffffff"};val b=EditText(this).apply{setText(formatTime(r.endUs,true));hint="终点 HH:MM:SS.ffffff"};box.addView(a);box.addView(b);val d=AlertDialog.Builder(this).setTitle("输入剪辑范围").setView(box).setPositiveButton("应用",null).setNegativeButton("取消",null).create();d.setOnShowListener{d.getButton(-1).setOnClickListener{val x=parseTime(a.text.toString());val y=parseTime(b.text.toString());if(x==null||y==null||!ClipRange(x,y).valid(s.durationUs)){a.error="需满足 0 ≤ A < B ≤ 总时长"}else{clipRange=ClipRange(x,y);updateClip();if(loop)session.setLoop(clipRange);d.dismiss()}}};d.show()}
  private fun more(){val items=arrayOf("切换音轨","切换字幕","加载外部字幕","保存当前画面","逐帧前进","逐帧后退","锁定／自动屏幕方向","控制栏常显／自动隐藏","诊断信息")
-  AlertDialog.Builder(this).setTitle("更多").setItems(items){_,i->when(i){0->tracks("audio");1->tracks("sub");2->startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),3);3->capture();4->session.frame(true);5->session.frame(false);6->requestedOrientation=if(requestedOrientation==ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)ActivityInfo.SCREEN_ORIENTATION_LOCKED else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;7->{alwaysControls=!alwaysControls;wake()};8->session.diagnostic{message(it+"\n本测试版未完成 Mate 20 X 真机长时验收。热状态：${thermal?:"不可用"}")}}}.show()
+  AlertDialog.Builder(this).setTitle("更多").setItems(items){_,i->when(i){0->tracks("audio");1->tracks("sub");2->startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),3);3->capture();4->session.frame(true);5->session.frame(false);6->requestedOrientation=if(requestedOrientation==ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)ActivityInfo.SCREEN_ORIENTATION_LOCKED else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;7->{alwaysControls=!alwaysControls;wake()};8->session.diagnostic{info->AlertDialog.Builder(this).setTitle("播放诊断").setMessage(info+"\n热状态：${thermal?:"不可用"}").setPositiveButton("关闭",null).setNeutralButton("复制诊断"){_,_->(getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("LumaView 诊断",info))}.show()}}}.show()
  }
  private fun tracks(type:String){val list=s.tracks.filter{it.type==type};val labels=arrayOf("关闭")+list.map{"${it.id} · ${it.title}"};AlertDialog.Builder(this).setTitle(if(type=="audio")"音轨" else "字幕").setItems(labels){_,i->session.selectTrack(if(type=="audio")"audio" else "sub",if(i==0)null else list[i-1].id)}.show()}
  private fun requestedTracks():IntArray {fun id(type:String):Int{val all=s.tracks.filter{it.type==type};val selected=all.firstOrNull{it.selected};if(selected==null)return if(type=="video")-1 else -2;return selected.ffIndex?:if(all.size==1)-1 else throw IllegalStateException("多轨道编号未确认，请重新打开视频后选择轨道")};return intArrayOf(id("video"),id("audio"),id("sub"))}

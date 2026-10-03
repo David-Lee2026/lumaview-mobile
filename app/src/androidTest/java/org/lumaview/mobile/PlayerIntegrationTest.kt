@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.net.Uri
 import android.os.SystemClock
 import android.view.*
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -42,6 +43,7 @@ class PlayerIntegrationTest {
  private fun screenSnapshot(name:String):File {
   inst.waitForIdleSync();Thread.sleep(350)
   val screen=inst.uiAutomation.takeScreenshot()?:error("display screenshot unavailable")
+  File(evidence,"$name-window.png").outputStream().use{screen.compress(Bitmap.CompressFormat.PNG,100,it)}
   val frame=bounds(value("videoFrame") as View)
   val fitted=RoiMath(session.state.width,session.state.height,frame.width(),frame.height(),session.state.rotation,session.state.sar)
   val left=(frame.left+fitted.left).toInt().coerceIn(0,screen.width-1);val top=(frame.top+fitted.top).toInt().coerceIn(0,screen.height-1)
@@ -116,6 +118,31 @@ class PlayerIntegrationTest {
     activity.javaClass.getDeclaredMethod("render",org.lumaview.mobile.player.PlayerState::class.java).apply{isAccessible=true}.invoke(activity,session.state.copy(positionUs=null))
     assertTrue("a missing playback sample must not reset the thumb",bar.progress>=previous)
    }
+   val samples=org.json.JSONArray();var last=-1;var top:Int?=null
+   repeat(30){Thread.sleep(50);inst.runOnMainSync{val bar=value("seek") as SeekBar;val location=IntArray(2);bar.getLocationOnScreen(location);assertTrue("live progress must not jitter backward",bar.progress>=last);if(top!=null)assertEquals("progress row must not shake vertically",top!!,location[1]);last=bar.progress;top=location[1];samples.put(JSONObject().put("progress",last).put("top",top))}}
+   File(evidence,"PROGRESS_RESULT.json").writeText(JSONObject().put("missingSampleKeptPosition",true).put("samples",samples).put("physicalDevice",false).toString(2))
+  }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
+ }
+ @Test fun decoderSwitchesAndExposureSettingsReachTheDisplayedWindow(){
+  context.getSharedPreferences("playback",0).edit().clear().commit()
+  val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  context.getSharedPreferences("history",0).edit().putLong("position:${Uri.fromFile(input)}",0).commit()
+  activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
+  try{
+   waitFor("software compatibility decode"){(session.state.positionUs?:0)>1_000_000&&session.state.decoder.endsWith("/ no")&&session.state.receipt?.get(6)==0.0}
+   session.pause(true);waitFor("compatibility pause"){session.state.paused};val software=mean(screenSnapshot("screen-software"));assertTrue(software>4.0)
+   fun choose(label:String){tap("解码设置");val nodes=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText(label);assertTrue(nodes.isNotEmpty());assertTrue(nodes[0].performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(500)}
+   choose("硬件加速（复制解码）");waitFor("copy-back decoder"){session.state.decoder.endsWith("/ mediacodec-copy")&&session.state.receipt?.get(6)==0.0};val hardware=mean(screenSnapshot("screen-hardware-copy"));assertTrue(hardware>4.0)
+   choose("兼容播放（软件解码，默认）");waitFor("return to software decode"){session.state.decoder.endsWith("/ no")&&session.state.receipt?.get(6)==0.0}
+   val before=mean(screenSnapshot("screen-exposure-before"));val request=session.state.receipt!![3]
+   tap("画面增强");val bars=ArrayList<AccessibilityNodeInfo>()
+   fun collect(node:AccessibilityNodeInfo){if(node.className?.toString()=="android.widget.SeekBar")bars.add(node);for(i in 0 until node.childCount)node.getChild(i)?.let{collect(it)}}
+   collect(inst.uiAutomation.rootInActiveWindow);assertTrue(bars.isNotEmpty());val args=android.os.Bundle().apply{putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE,150f)}
+   assertTrue(bars[0].performAction(AccessibilityNodeInfo.ACTION_SET_PROGRESS,args));Thread.sleep(400)
+   val done=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("完成");assertTrue(done.isNotEmpty());assertTrue(done[0].performAction(AccessibilityNodeInfo.ACTION_CLICK))
+   waitFor("exposure setting render"){session.state.receipt?.let{it[3]>request&&it[6]==0.0}==true}
+   val after=mean(screenSnapshot("screen-exposure-after"));assertTrue("exposure setting must change actual displayed pixels",after>before*1.05)
+   File(evidence,"DISPLAY_RESULT.json").writeText(JSONObject().put("api",android.os.Build.VERSION.SDK_INT).put("softwareLuma",software).put("hardwareCopyLuma",hardware).put("beforeExposureLuma",before).put("afterExposureLuma",after).put("settingsVisible",true).put("physicalDevice",false).toString(2))
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
  @Test fun roiStatisticsIgnoreOutsideBrightnessAndRespondInside(){

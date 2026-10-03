@@ -10,6 +10,10 @@ def change(path,old,new):
  p.write_text(s.replace(old,new,1))
 def write(path,text):
  p=root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+# The application requires GLES 3. An ES2 request can create an ES2 context on
+# real drivers even when the emulator happens to return an ES3 context.
+change('video/out/opengl/egl_helpers.c','rend = EGL_OPENGL_ES2_BIT;\n        name = "GLES 2.x +";','rend = EGL_OPENGL_ES3_BIT_KHR;\n        name = "GLES 3.x";')
+change('video/out/opengl/egl_helpers.c','es ? EGL_CONTEXT_CLIENT_VERSION : EGL_NONE, 2,','es ? EGL_CONTEXT_CLIENT_VERSION : EGL_NONE, 3,')
 write('include/mpv/lvm_ext.h',r'''/* LumaView private extension. Same ISC terms as the mpv client API. */
 #pragma once
 #include <stdint.h>

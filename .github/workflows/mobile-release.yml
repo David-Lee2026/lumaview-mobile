@@ -48,7 +48,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [arm64, x86_64]
+        include:
+          - arch: arm64
+            api: 35
+          - arch: x86_64
+            api: 29
+          - arch: x86_64
+            api: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,7 +101,7 @@ jobs:
         if: matrix.arch == 'x86_64'
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ matrix.api }}
           target: default
           arch: x86_64
           profile: pixel_2
@@ -112,11 +118,17 @@ jobs:
           tar -xf release-evidence/device-integration.tar -C release-evidence/decoded-integration
           python3 ci/verify_exports.py release-evidence/decoded-integration/integration app/src/androidTest/assets/baseline.mp4 > release-evidence/export-checks.json
       - uses: actions/upload-artifact@v4
+        if: always() && matrix.arch == 'x86_64'
+        with:
+          name: LumaView-APK-x86_64-API${{ matrix.api }}
+          path: release-out
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: LumaView-Android-${{ matrix.arch }}
+          name: LumaView-Android-${{ matrix.arch }}${{ matrix.arch == 'x86_64' && format('-API{0}', matrix.api) || '' }}
           path: |
-            release-out
+            ${{ matrix.arch == 'arm64' && 'release-out' || '' }}
             release-evidence
             toolchain-evidence
             app/build/reports/tests

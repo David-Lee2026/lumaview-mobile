@@ -4,6 +4,33 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreTest {
+    @Test fun progressInterpolatesAndDoesNotRewindForSmallJitter() {
+        val clock=PlaybackProgress()
+        clock.sample(1,1_000_000,10_000_000,false,1.0,1000)
+        assertEquals(1_100_000L,clock.position(1100)!!)
+        clock.sample(1,990_000,10_000_000,false,1.0,1110)
+        assertTrue(clock.position(1120)!!>=1_100_000)
+        clock.sample(1,null,10_000_000,false,1.0,1130)
+        assertTrue(clock.position(1140)!!>=1_100_000)
+        assertTrue(clock.position(2000)!!<=1_350_000)
+    }
+    @Test fun progressAcceptsExplicitSeekAndMediaChange() {
+        val clock=PlaybackProgress()
+        clock.sample(1,8_000_000,10_000_000,false,1.0,1000)
+        clock.seek(2_000_000,1100)
+        clock.sample(1,8_100_000,10_000_000,false,1.0,1120)
+        assertTrue(clock.position(1120)!!<3_000_000)
+        clock.sample(1,2_000_000,10_000_000,true,1.0,1140)
+        assertEquals(clock.position(1140),clock.position(1800))
+        clock.sample(2,0,10_000_000,true,1.0,2000)
+        assertEquals(0L,clock.position(2100)!!)
+    }
+    @Test fun progressUsesSpeedAndStopsAtDuration() {
+        val clock=PlaybackProgress()
+        clock.sample(1,9_500_000,10_000_000,false,2.0,1000)
+        assertEquals(9_700_000L,clock.position(1100)!!)
+        assertEquals(10_000_000L,clock.position(1350)!!)
+    }
     @Test fun letterboxIsNotSelectable() {
         val map = RoiMath(1920, 1080, 1000, 1000)
         assertNull(map.point(100.0, 50.0))
