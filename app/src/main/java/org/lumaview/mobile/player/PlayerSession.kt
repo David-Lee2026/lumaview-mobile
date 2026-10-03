@@ -104,7 +104,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  fun enhance(value:EnhanceSettings,reset:Boolean=false){safe{
   // Explicit exposure/mode changes must redraw even when the media PTS is
   // unchanged. Temporal adaptation has dt=0 on a paused frame.
-  val resetExposure=reset||value.manualEv!=settings.manualEv||value.mode!=settings.mode||value.bypass!=settings.bypass||(settings.locked&&!value.locked)
+  val resetExposure=reset||value.manualEv!=settings.manualEv||value.mode!=settings.mode||(value.bypass!=settings.bypass&&!value.locked)||(settings.locked&&!value.locked)
   settings=value;if(initialized)submit(resetExposure)
  }}
  private fun submit(reset:Boolean){request++;val effective=if(rendererTier>=2)settings.copy(bypass=true)else settings;val rc=NativeStage.submit(effective.values(),generation,surfaceGeneration,revision,request,reset);if(rc!=0)error="增强参数提交失败 ($rc)"}
