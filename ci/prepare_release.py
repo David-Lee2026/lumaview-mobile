@@ -45,3 +45,12 @@ subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','t
 (evd/'fixture.sha256').write_text(hashlib.sha256((evd/'baseline.mp4').read_bytes()).hexdigest())
 shutil.copyfile(source/'dependencies-lock.json',ev/'dependencies-lock.json')
 print('Prepared native and fixture:',arch)
+
+# Paired source-video fixtures: fixed dark central ROI, independently changing outside.
+for inside,outside in [(96,0),(96,255),(72,255)]:
+    color='0x%02x%02x%02x'%(inside,inside,inside)
+    dest=evd/('roi-gray-%d-bg-%d.mp4'%(inside,outside))
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i',
+      'color=c=%s:s=640x360:r=30:d=10'%('white' if outside else 'black'),
+      '-vf','drawbox=x=140:y=70:w=360:h=220:color=%s:t=fill,format=yuv420p'%color,
+      '-c:v','libx264','-preset','fast','-crf','12','-g','60','-an','-y',str(dest)],check=True)

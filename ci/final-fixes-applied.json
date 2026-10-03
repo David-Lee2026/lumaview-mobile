@@ -1,0 +1,5 @@
+{
+  "app/src/main/java/org/lumaview/mobile/viewport/RoiOverlayView.kt": "e73d409c09a5e8be5d92625a1af551659355c2adc1a05928cf110a523fabc541",
+  "app/src/androidTest/java/org/lumaview/mobile/PlayerIntegrationTest.kt": "5d6b5fbb78a4e2b905f42877760694bd84b22a25813e89274f2f99edf2a30782",
+  "ci/prepare_release.py": "1e28741d52779466ace9152db2742a697db05a8672d0fd97add203090f94d611"
+}

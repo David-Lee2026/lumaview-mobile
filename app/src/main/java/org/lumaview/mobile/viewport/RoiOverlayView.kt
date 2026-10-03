@@ -55,8 +55,8 @@ class RoiOverlayView(context:Context):View(context) {
   if(locked){if(e.actionMasked==MotionEvent.ACTION_UP)onTap();return true}
   val m=math?:return true
   if(!selecting)pinch.onTouchEvent(e)
-  if(e.actionMasked==MotionEvent.ACTION_CANCEL){owner="";activeId=-1;return true}
-  if(e.actionMasked==MotionEvent.ACTION_POINTER_DOWN){owner="pinch";return true}
+  if(e.actionMasked==MotionEvent.ACTION_CANCEL){if(owner=="seek")onSeek(0f,true);owner="";activeId=-1;return true}
+  if(e.actionMasked==MotionEvent.ACTION_POINTER_DOWN){if(owner=="seek")onSeek(0f,true);owner="pinch";return true}
   if(e.actionMasked==MotionEvent.ACTION_POINTER_UP){activeId=-1;owner="pinch";return true}
   when(e.actionMasked){
    MotionEvent.ACTION_DOWN->{
@@ -70,7 +70,7 @@ class RoiOverlayView(context:Context):View(context) {
    }
    MotionEvent.ACTION_MOVE->{
     if(e.pointerCount>1||pinch.isInProgress||activeId<0||owner=="pinch")return true
-    val index=e.findPointerIndex(activeId);if(index<0){owner="";return true};val x=e.getX(index);val y=e.getY(index)
+    val index=e.findPointerIndex(activeId);if(index<0){if(owner=="seek")onSeek(0f,true);owner="";activeId=-1;return true};val x=e.getX(index);val y=e.getY(index)
     if(hypot((x-startX).toDouble(),(y-startY).toDouble())>6*dp)changed=true
     if(selecting){
      if(owner=="draw")selection=m.select(startX.toDouble(),startY.toDouble(),x.toDouble(),y.toDouble(),24.0*dp)

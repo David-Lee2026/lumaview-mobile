@@ -68,10 +68,20 @@ class PlayerIntegrationTest {
    comparison(true)
    val original=snapshot("02-original");val a=mean(original);val b=mean(enhanced);assertTrue("pixel enhancement $a -> $b",b>a*1.12)
    val bar=value("seek") as SeekBar;val sr=bounds(bar);drag(sr.left+sr.width()*.3f,sr.exactCenterY(),sr.left+sr.width()*.65f,sr.exactCenterY());waitFor("seek by touch"){(session.state.positionUs?:0)>6_000_000};assertTrue(session.state.paused)
+   val gb=bounds(value("videoFrame") as View);val down=SystemClock.uptimeMillis()
+   touch(gb.exactCenterX(),gb.exactCenterY(),MotionEvent.ACTION_DOWN,down,down)
+   touch(gb.exactCenterX()+70,gb.exactCenterY(),MotionEvent.ACTION_MOVE,down+80,down)
+   Thread.sleep(200);assertEquals(true,value("dragging"))
+   touch(gb.exactCenterX()+70,gb.exactCenterY(),MotionEvent.ACTION_CANCEL,down+300,down)
+   waitFor("cancelled gesture releases scrub ownership"){value("dragging")==false}
+   waitFor("cancelled seek restores pause"){session.state.paused}
    tap("区域放大");assertNull(value("crop"));val vr=bounds(value("videoFrame") as View)
    val vh=minOf(vr.height().toFloat(),vr.width()*9f/16);val cy=vr.exactCenterY()
    drag(vr.left+vr.width()*.25f,cy-vh*.25f,vr.left+vr.width()*.75f,cy+vh*.25f)
-   assertTrue((value("applyButton") as Button).isEnabled);tap("应用");waitFor("source crop applied"){value("crop")!=null};snapshot("03-roi")
+   assertTrue((value("applyButton") as Button).isEnabled);tap("应用");waitFor("source crop applied"){
+    val c=value("crop") as? RoiRect;val r=session.state.receipt
+    c!=null&&r!=null&&kotlin.math.abs(r[8]-c.left)<3&&kotlin.math.abs(r[9]-c.top)<3&&kotlin.math.abs(r[10]-c.right)<3&&kotlin.math.abs(r[11]-c.bottom)<3
+   };snapshot("03-roi")
    val roiOriginal=snapshot("roi-original");val cropBefore=value("crop")
    comparison(false);val roiEnhanced=snapshot("roi-enhanced")
    assertEquals(cropBefore,value("crop"));assertTrue("ROI pixels must be enhanced",mean(roiEnhanced)>mean(roiOriginal)*1.10);screen("ui-roi")
@@ -96,7 +106,7 @@ class PlayerIntegrationTest {
    val suspended=CountDownLatch(1);session.suspendForExport{suspended.countDown()};assertTrue(suspended.await(15,TimeUnit.SECONDS))
    val exact=File(evidence,"exact.mp4");val end=CountDownLatch(1);var exactResult:Result<String>?=null;val exporter=ExactExporter(context)
    exporter.start(Uri.fromFile(input),selected,exact,true,2_000_000,{}){r->exactResult=r;end.countDown()};assertTrue(end.await(120,TimeUnit.SECONDS));exactResult!!.getOrThrow();assertTrue(exact.length()>0)
-   val report=JSONObject().put("nativeLoaded",true).put("originalLuma",a).put("enhancedLuma",b).put("uiRangeStartUs",selected.startUs).put("uiRangeEndUs",selected.endUs).put("copyPlan",plan).put("copyResult",copyResult).put("exactResult",exactResult!!.getOrThrow()).put("abi",android.os.Build.SUPPORTED_ABIS.joinToString()).put("physicalDevice",false).put("roiOriginalLuma",mean(roiOriginal)).put("roiEnhancedLuma",mean(roiEnhanced)).put("pausedRedrawDoesNotIncrementFrameCounter",true).put("rotations","0,90,180,270").put("slowSpeed",0.5).put("volumePropertyVerified",true)
+   val report=JSONObject().put("nativeLoaded",true).put("originalLuma",a).put("enhancedLuma",b).put("uiRangeStartUs",selected.startUs).put("uiRangeEndUs",selected.endUs).put("copyPlan",plan).put("copyResult",copyResult).put("exactResult",exactResult!!.getOrThrow()).put("abi",android.os.Build.SUPPORTED_ABIS.joinToString()).put("physicalDevice",false).put("roiOriginalLuma",mean(roiOriginal)).put("roiEnhancedLuma",mean(roiEnhanced)).put("pausedRedrawDoesNotIncrementFrameCounter",true).put("rotations","0,90,180,270").put("slowSpeed",0.5).put("volumePropertyVerified",true).put("cancelledSeekReleasesOwnership",true)
    File(evidence,"RESULT.json").writeText(report.toString(2));session.resumeAfterExport()
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
@@ -106,9 +116,12 @@ class PlayerIntegrationTest {
   b.recycle();return sum/n
  }
  private fun grayFixture(name:String,inside:Int,outside:Int):File {
-  val b=Bitmap.createBitmap(640,360,Bitmap.Config.ARGB_8888);val c=Canvas(b);c.drawColor(Color.rgb(outside,outside,outside))
-  c.drawRect(140f,70f,500f,290f,Paint().apply{color=Color.rgb(inside,inside,inside)})
-  val f=File(context.filesDir,name);f.outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle();return f
+  // Exercise the product's video contract. Single PNG image streams do not
+  // refresh video-crop in the pinned upstream still-image path.
+  val asset="roi-gray-$inside-bg-$outside.mp4"
+  val f=File(context.filesDir,asset)
+  inst.context.assets.open(asset).use{input->f.outputStream().use{input.copyTo(it)}}
+  return f
  }
  @Test fun roiPixelsIgnoreOutsideAndRespondInsideWithNewIntents(){
   val frames=listOf(grayFixture("roi-darkbg.png",96,0),grayFixture("roi-whitebg.png",96,255),grayFixture("roi-inside-dark.png",72,255))
