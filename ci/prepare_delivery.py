@@ -12,6 +12,7 @@ assert hashlib.sha256(apk.read_bytes()).hexdigest()==record['apkSha256']
 # Kotlin-only follow-up: native source and shader identity must match the native build.
 paths=['app/src/main/jni','ci/patch_engine.py','shaders/lvm/mobile.glsl','app/src/main/assets/lvm/mobile.glsl']
 assert not subprocess.check_output(['git','diff','--name-only',record['sourceCommit'],'HEAD','--',*paths],text=True).strip()
+Path('app/src/main/libs').mkdir(parents=True,exist_ok=True)
 with zipfile.ZipFile(apk) as z:
  assert z.testzip() is None
  native=[n for n in z.namelist() if n.startswith('lib/') and n.endswith('.so')]
