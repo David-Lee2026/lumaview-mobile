@@ -1,9 +1,10 @@
 """Inspect actual Android export outputs and original compressed packet payloads."""
 from pathlib import Path
-import json,subprocess,sys
+import json,subprocess,sys,hashlib
 out=Path(sys.argv[1]);source=Path(sys.argv[2]);report=json.loads((out/'RESULT.json').read_text())
 def probe(path):return json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-show_format','-show_packets','-show_data_hash','sha256','-of','json',str(path)]))
-original=probe(source);checks={}
+assert hashlib.sha256(source.read_bytes()).digest()==hashlib.sha256((out.parent/'baseline.mp4').read_bytes()).digest()
+original=probe(source);checks={'sourceFixtureSha256':hashlib.sha256(source.read_bytes()).hexdigest()}
 for mode in ['copy','exact']:
  path=out/(mode+'.mp4');data=probe(path)
  decoded=subprocess.run(['ffmpeg','-v','error','-xerror','-i',str(path),'-f','null','-'],capture_output=True,text=True)
@@ -19,8 +20,10 @@ for mode in ['copy','exact']:
  else:
   expected=(report['uiRangeEndUs']-report['uiRangeStartUs'])/1e6
   assert abs(checks[mode]['durationSeconds']-expected)<.12,(expected,checks[mode])
-  assert data['streams'][0]['codec_name']=='h264'
-  assert data['streams'][0]['width']==640 and data['streams'][0]['height']==360
+  video=next(s for s in data['streams'] if s['codec_type']=='video')
+  assert video['codec_name']=='h264'
+  assert video['width']==640 and video['height']==360
+  assert all(s['codec_name']=='aac' for s in data['streams'] if s['codec_type']=='audio')
   assert '视频编码器：' in report['exactResult']
 roi=json.loads((out/'ROI_RESULT.json').read_text());assert roi['outsideIndependence'] and roi['insideResponse'];checks['roi']=roi
 checks['huaweiPhysicalValidation']='NOT_RUN';checks['environment']='Android API 35 x86_64 emulator';print(json.dumps(checks,indent=2))

@@ -2,7 +2,7 @@ name: LumaView Mobile APK and integration
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py, ci/run_device_tests.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -104,7 +104,7 @@ jobs:
           script: |
             adb shell wm size 1280x800
             adb shell wm density 160
-            bash -c 'set +e; ./gradlew :app:connectedDefaultDebugAndroidTest --no-daemon > release-evidence/device-test.log 2>&1; result=$?; adb logcat -d > release-evidence/logcat.txt; adb exec-out run-as org.lumaview.mobile tar -C files -cf - integration > release-evidence/device-integration.tar; adb shell getprop > release-evidence/emulator-properties.txt; exit $result'
+            python3 ci/run_device_tests.py
       - name: Decode exported media and compare compressed payloads
         if: matrix.arch == 'x86_64'
         run: |
