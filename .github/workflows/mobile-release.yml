@@ -1,14 +1,14 @@
 name: LumaView Mobile APK and integration
 on:
   push:
-    branches: [implementation/android-20261003]
+    branches: [implementation/verified-apk-20261004]
     paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py]
   workflow_dispatch:
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: lumaview-mobile-release
+  group: lumaview-verified-apk
   cancel-in-progress: true
 jobs:
   source:
@@ -62,7 +62,8 @@ jobs:
       - name: Install native build prerequisites
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ninja-build pkg-config ffmpeg glslang-tools python3-jinja2
+          sudo apt-get install -y --no-install-recommends nasm ninja-build pkg-config ffmpeg glslang-tools python3-jinja2
+          nasm -v
           python3 -m venv /tmp/lvm-build-venv
           /tmp/lvm-build-venv/bin/pip install meson==1.11.0
           echo /tmp/lvm-build-venv/bin >> "$GITHUB_PATH"
