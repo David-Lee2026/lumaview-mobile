@@ -32,6 +32,8 @@ ffscript.write_text(config.replace('--enable-muxer=mov,matroska,mpegts','--enabl
 with (ev/f'ffmpeg-{arch}.log').open('w') as f:subprocess.run(['./buildall.sh','-n','--arch',arch,'ffmpeg'],cwd=root/'buildscripts',env=dict(os.environ,cores='4'),stdout=f,stderr=subprocess.STDOUT,check=True)
 (ev/'ffmpeg-export-config.json').write_text(json.dumps({'source':'094a2f8a2a5e7fa64736e067de224ce28fdf5979','change':'MP4 muxer enabled; other native dependencies reused'},indent=2))
 subprocess.run([sys.executable,'ci/patch_engine.py'],check=True)
+subprocess.run([sys.executable,'ci/crop_refresh_fix.py'],check=True)
+(ev/'crop-fix.json').write_text(json.dumps({'scriptSha256':hashlib.sha256((root/'ci/crop_refresh_fix.py').read_bytes()).hexdigest(),'reason':'Read core-owned crop settings before paused refresh; do not race video-output option cache'},indent=2))
 env=dict(os.environ,cores='4')
 with (ev/f'engine-{arch}.log').open('w') as f:subprocess.run(['./buildall.sh','-n','--arch',arch,'mpv'],cwd=root/'buildscripts',env=env,stdout=f,stderr=subprocess.STDOUT,check=True)
 prefix=root/f'buildscripts/prefix/{arch}'
