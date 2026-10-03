@@ -67,9 +67,9 @@ class PlayerIntegrationTest {
    drag(right,timeline.exactCenterY()+20*density,left+(right-left)*.7f,timeline.exactCenterY()+20*density)
    val selected=value("clipRange") as ClipRange;assertTrue(selected.startUs>1_000_000);assertTrue(selected.endUs-selected.startUs>3_000_000)
    // Native data path tests consume the actual UI-selected range, not invented parameters.
-   val fd=android.os.ParcelFileDescriptor.open(input,android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+   val acquired=CountDownLatch(1);var authorized:Result<org.lumaview.mobile.storage.ReadLease>?=null;session.readLease{authorized=it;acquired.countDown()};assertTrue(acquired.await(10,TimeUnit.SECONDS));val lease=authorized!!.getOrThrow();val fd=lease.descriptor
    val stale=NativeExporter.begin();NativeExporter.cancel();val cancelled=JSONObject(NativeExporter.analyze(fd.fd,-1,-1,-2,selected.startUs,selected.endUs,stale));assertTrue("cancel before JNI entry must remain cancelled",cancelled.has("error"));val token=NativeExporter.begin();val plan=JSONObject(NativeExporter.analyze(fd.fd,-1,-1,-2,selected.startUs,selected.endUs,token));assertFalse(plan.toString(),plan.has("error"))
-   val copy=File(evidence,"copy.mp4");val copyResult=JSONObject(NativeExporter.write(fd.fd,plan.getInt("video"),plan.getInt("audio"),-2,plan.getLong("startUs"),plan.getLong("endUs"),copy.path,"mp4",token));assertFalse(copyResult.toString(),copyResult.has("error"));fd.close();assertTrue(copy.length()>0)
+   val copy=File(evidence,"copy.mp4");val copyResult=JSONObject(NativeExporter.write(fd.fd,plan.getInt("video"),plan.getInt("audio"),-2,plan.getLong("startUs"),plan.getLong("endUs"),copy.path,"mp4",token));assertFalse(copyResult.toString(),copyResult.has("error"));lease.close();assertTrue(copy.length()>0)
    val suspended=CountDownLatch(1);session.suspendForExport{suspended.countDown()};assertTrue(suspended.await(15,TimeUnit.SECONDS))
    val exact=File(evidence,"exact.mp4");val end=CountDownLatch(1);var exactResult:Result<String>?=null;val exporter=ExactExporter(context)
    exporter.start(Uri.fromFile(input),selected,exact,true,2_000_000,{}){r->exactResult=r;end.countDown()};assertTrue(end.await(120,TimeUnit.SECONDS));exactResult!!.getOrThrow();assertTrue(exact.length()>0)
@@ -77,4 +77,20 @@ class PlayerIntegrationTest {
    File(evidence,"RESULT.json").writeText(report.toString(2));session.resumeAfterExport()
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
+ @Test fun roiStatisticsIgnoreOutsideBrightnessAndRespondInside(){
+  val input=File(context.filesDir,"roi-scenes.mp4");inst.context.assets.open("roi-scenes.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
+  try{
+   waitFor("ROI fixture decode"){session.state.width==640&&session.state.receipt?.get(6)==0.0};session.pause(true);waitFor("ROI fixture pause"){session.state.paused}
+   tap("区域放大");val frame=bounds(value("videoFrame") as View);val height=minOf(frame.height().toFloat(),frame.width()*9f/16);val width=height*16f/9;val cx=frame.exactCenterX();val cy=frame.exactCenterY()
+   drag(cx-width*.25f,cy-height*.25f,cx+width*.25f,cy+height*.25f);tap("应用")
+   fun at(us:Long){session.seek(us);waitFor("ROI scene $us"){val state=session.state;state.receipt?.get(6)==0.0&&kotlin.math.abs((state.positionUs?:-10_000_000)-us)<200_000&&kotlin.math.abs((state.receipt?.get(4)?:-10_000_000.0)-us)<200_000};Thread.sleep(350)}
+   at(500_000);val first=mean(snapshot("04-roi-black-background"));session.enhance(EnhanceSettings(mode=0),true);waitFor("ROI original"){session.state.receipt?.get(5)==0.0};val brightRaw=mean(snapshot("05-roi-bright-original"));session.enhance(EnhanceSettings(),true);waitFor("ROI enhancement restored"){session.state.receipt?.get(5)==1.0}
+   at(3_500_000);val outside=mean(snapshot("06-roi-white-background"));val outsideVariation=kotlin.math.abs(outside/first-1.0);assertTrue("outside brightness leaked into ROI: $first -> $outside",outsideVariation<.02)
+   at(6_500_000);val darkEnhanced=mean(snapshot("07-roi-dark-enhanced"));session.enhance(EnhanceSettings(mode=0),true);waitFor("dark ROI original"){session.state.receipt?.get(5)==0.0};val darkRaw=mean(snapshot("08-roi-dark-original"))
+   val brightGain=first/brightRaw;val darkGain=darkEnhanced/darkRaw;assertTrue("ROI must respond when inside becomes darker: $brightGain -> $darkGain",darkGain>brightGain*1.15)
+   File(evidence,"ROI_RESULT.json").writeText(JSONObject().put("outsideOutputVariation",outsideVariation).put("brightOutputRatio",brightGain).put("darkOutputRatio",darkGain).put("outsideIndependence",true).put("insideResponse",true).put("physicalDevice",false).toString(2))
+  }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
+ }
+
 }

@@ -22,4 +22,5 @@ for mode in ['copy','exact']:
   assert data['streams'][0]['codec_name']=='h264'
   assert data['streams'][0]['width']==640 and data['streams'][0]['height']==360
   assert '视频编码器：' in report['exactResult']
+roi=json.loads((out/'ROI_RESULT.json').read_text());assert roi['outsideIndependence'] and roi['insideResponse'];checks['roi']=roi
 checks['huaweiPhysicalValidation']='NOT_RUN';checks['environment']='Android API 35 x86_64 emulator';print(json.dumps(checks,indent=2))

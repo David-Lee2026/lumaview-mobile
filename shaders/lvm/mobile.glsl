@@ -105,9 +105,9 @@ vec4 hook(){
    sum+=k*q;weight+=k;
   }
  }
- vec3 smooth=sum/weight;
+ vec3 filtered=sum/weight;
  float dark=1.0-smoothstep(.12,.65,lum);
- c=mix(c,smooth,lvm_denoise*dark);
+ c=mix(c,filtered,lvm_denoise*dark);
  float illumination=LVM_ILLUM_tex(local).r;
  float ev=unpack16(LVM_EV_tex(vec2(.5)).rg)*4.0;
  ev=clamp(ev+lvm_shadows*(0.25-illumination)*1.6,0.0,4.0);
@@ -120,6 +120,6 @@ vec4 hook(){
  c=mix(vec3(outlum),c,lvm_saturation);
  // Detail gain is bounded and disabled around the sensor noise floor.
  float detailGate=smoothstep(.03,.15,lum)*(1.0-smoothstep(.75,.98,outlum));
- c+=lvm_detail*detailGate*(source.rgb-smooth);
+ c+=lvm_detail*detailGate*(source.rgb-filtered);
  return vec4(clamp(c,0.0,1.0),source.a);
 }

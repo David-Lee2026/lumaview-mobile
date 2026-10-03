@@ -2,7 +2,7 @@ name: LumaView Mobile APK and integration
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -72,6 +72,8 @@ jobs:
           run-id: 37127934301
           github-token: ${{ github.token }}
           path: native-input
+      - name: Check GLES 3 shader syntax
+        run: python3 ci/verify_shader.py
       - name: Rebuild modified native engine and JNI bridge
         run: python3 ci/prepare_release.py ${{ matrix.arch }}
       - name: Compile application, test APK and unit tests

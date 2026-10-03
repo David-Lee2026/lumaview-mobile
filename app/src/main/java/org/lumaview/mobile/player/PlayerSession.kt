@@ -30,7 +30,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   override fun eventProperty(property:String){};override fun eventProperty(property:String,value:Long){};override fun eventProperty(property:String,value:Boolean){};override fun eventProperty(property:String,value:String){};override fun eventProperty(property:String,value:Double){}
   override fun event(eventId:Int){if(eventId==21)worker.post{if(initialized&&!closed){seekResume?.let{MPVLib.setPropertyBoolean("pause",it)};seekResume=null}}}
  }
- private fun safe(block:()->Unit){worker.post{if(!closed)try{block()}catch(t:Throwable){error=t.message?:t.javaClass.simpleName;publish()}}}
+ private fun safe(onClosed:()->Unit={},block:()->Unit){worker.post{if(!closed)try{block()}catch(t:Throwable){error=t.message?:t.javaClass.simpleName;publish()}else onClosed()}}
  fun attach(st:SurfaceTexture,w:Int,h:Int){
   safe {
    if(texture!==st){shutdownEngine();texture?.release();texture=st;surfaceGeneration=serial.incrementAndGet();surface=Surface(st)}
@@ -44,7 +44,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   if(texture===st){resumeUs=state.positionUs?:resumeUs;resumePaused=true;shutdownEngine();surface?.release();surface=null;texture=null;st.release()}
   else st.release()
  }}
- fun open(lease:ReadLease,positionUs:Long=0){safe{
+ fun open(lease:ReadLease,positionUs:Long=0){safe({lease.close()}){
   shutdownEngine();input?.close();input=lease;generation=serial.incrementAndGet();revision++;crop=null;rotation=0;loop=null;error=null;resumeUs=positionUs;resumePaused=false;resumeSpeed=1.0;trackCache=emptyList();state=PlayerState(generation)
   if(surface!=null)initialize();publish()
  }}
@@ -76,6 +76,11 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   }
  }
  fun close(){closed=true;worker.post{shutdownEngine();surface?.release();surface=null;texture?.release();texture=null;input?.close();input=null}}
+ /** Duplicate the authorized current input; cached providers do not need a second full copy. */
+ fun readLease(reply:(Result<ReadLease>)->Unit){worker.post{
+  val result=runCatching{check(!closed);val source=checkNotNull(input){"媒体未打开"};ReadLease(source.uri,source.name,ParcelFileDescriptor.dup(source.descriptor.fileDescriptor),source.bytes)}
+  ui.post{if(closed){result.getOrNull()?.close();reply(Result.failure(IllegalStateException("播放器已关闭")))}else reply(result)}
+ }}
  fun pause(value:Boolean){safe{resumePaused=value;if(initialized)MPVLib.setPropertyBoolean("pause",value)}}
  fun speed(value:Double){safe{resumeSpeed=value.coerceIn(.25,2.0);if(initialized)MPVLib.setPropertyDouble("speed",resumeSpeed)}}
  fun seek(us:Long,final:Boolean=true,restorePaused:Boolean?=null){safe{
@@ -90,7 +95,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  private fun submit(reset:Boolean){request++;val rc=NativeStage.submit(settings.values(),generation,surfaceGeneration,revision,request,reset);if(rc!=0)error="增强参数提交失败 ($rc)"}
  fun frame(forward:Boolean){safe{if(initialized){MPVLib.setPropertyBoolean("pause",true);MPVLib.command(arrayOf(if(forward)"frame-step" else "frame-back-step"))}}}
  fun selectTrack(type:String,id:Int?){safe{if(initialized)MPVLib.setPropertyString(if(type=="audio")"aid" else "sid",id?.toString()?:"no")}}
- fun externalSubtitle(lease:ReadLease){safe{if(initialized){ // mpv opens its own file descriptor; retain lease until session end.
+ fun externalSubtitle(lease:ReadLease){safe({lease.close()}){if(initialized){ // mpv opens its own file descriptor; retain lease until session end.
   subtitleLeases.add(lease);MPVLib.command(arrayOf("sub-add","fd://${lease.fd}","select",lease.name))
  }else lease.close()}}
  private val subtitleLeases=ArrayList<ReadLease>()

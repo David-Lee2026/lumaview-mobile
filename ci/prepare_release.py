@@ -42,6 +42,12 @@ with (ev/f'jni-{arch}.log').open('w') as f:subprocess.run([str(ndk/'ndk-build'),
 asset=root/'app/src/main/assets/lvm/mobile.glsl';asset.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'shaders/lvm/mobile.glsl',asset)
 (evd:=root/'app/src/androidTest/assets').mkdir(parents=True,exist_ok=True)
 subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=640x360:rate=30:duration=12','-f','lavfi','-i','sine=frequency=440:duration=12','-vf','format=rgb24,colorchannelmixer=rr=0.18:gg=0.18:bb=0.18,format=yuv420p','-c:v','libx264','-preset','fast','-crf','18','-g','60','-keyint_min','60','-sc_threshold','0','-c:a','aac','-shortest','-y',str(evd/'baseline.mp4')],check=True)
+subprocess.run(['ffmpeg','-hide_banner','-loglevel','error',
+ '-f','lavfi','-i','color=black:size=640x360:rate=30:duration=3,drawbox=x=128:y=72:w=384:h=216:color=0x707070:t=fill',
+ '-f','lavfi','-i','color=white:size=640x360:rate=30:duration=3,drawbox=x=128:y=72:w=384:h=216:color=0x707070:t=fill',
+ '-f','lavfi','-i','color=black:size=640x360:rate=30:duration=3,drawbox=x=128:y=72:w=384:h=216:color=0x484848:t=fill',
+ '-filter_complex','[0:v][1:v][2:v]concat=n=3:v=1:a=0[v]','-map','[v]','-c:v','libx264','-pix_fmt','yuv420p','-crf','12','-g','30','-y',str(evd/'roi-scenes.mp4')],check=True)
+(evd/'roi-fixture.sha256').write_text(hashlib.sha256((evd/'roi-scenes.mp4').read_bytes()).hexdigest())
 (evd/'fixture.sha256').write_text(hashlib.sha256((evd/'baseline.mp4').read_bytes()).hexdigest())
 shutil.copyfile(source/'dependencies-lock.json',ev/'dependencies-lock.json')
 print('Prepared native and fixture:',arch)
