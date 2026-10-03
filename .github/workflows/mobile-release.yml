@@ -1,0 +1,131 @@
+name: LumaView Mobile APK and integration
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: lumaview-mobile-release
+  cancel-in-progress: true
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.commit.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: implementation/android-20261003
+      - name: Verify transfer and materialize readable source files
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64,hashlib,tarfile,io,json,subprocess
+          marker=Path('ci/mobile-payload-applied.json')
+          if not marker.exists():
+            parts=[Path('ci/payload.mobile.%d.xz.b64'%i).read_text().strip() for i in range(5)]
+            data=base64.b64decode(''.join(parts),validate=True)
+            actual=hashlib.sha256(data).hexdigest()
+            assert actual=='33e864eae8533444e45ebfcd0feec937a30027812a91f016a9e3e3896dfe4628',actual
+            with tarfile.open(fileobj=io.BytesIO(data),mode='r:xz') as t:
+              files=t.getnames()
+              for p in files:
+                assert Path(p).resolve().is_relative_to(Path.cwd())
+                assert not p.lower().endswith(('.ttf','.otf','.jks','.p12','.pem'))
+              t.extractall('.',filter='data')
+            marker.write_text(json.dumps({'sha256':actual,'files':files},indent=2))
+            subprocess.run(['git','config','user.name','LumaView Build'],check=True)
+            subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+            subprocess.run(['git','add','--',*files,str(marker)],check=True)
+            subprocess.run(['git','commit','-m','feat: materialize reviewed mobile UI, native enhancement and export sources'],check=True)
+            subprocess.run(['git','push','origin','HEAD:implementation/android-20261003'],check=True)
+      - name: Record source identity
+        id: commit
+        run: |
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          mkdir -p source-checkpoint
+          git archive --format=tar.gz HEAD > source-checkpoint/LumaView-mobile-source.tar.gz
+          git rev-parse HEAD > source-checkpoint/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LumaView-readable-source
+          path: source-checkpoint
+          retention-days: 30
+  build:
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install official SDK 36 and NDK r30
+        run: python3 ci/install_sdk.py
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build pkg-config ffmpeg glslang-tools python3-jinja2
+          python3 -m venv /tmp/lvm-build-venv
+          /tmp/lvm-build-venv/bin/pip install meson==1.11.0
+          echo /tmp/lvm-build-venv/bin >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-${{ matrix.arch }}
+          run-id: 37127934301
+          github-token: ${{ github.token }}
+          path: native-input
+      - name: Rebuild modified native engine and JNI bridge
+        run: python3 ci/prepare_release.py ${{ matrix.arch }}
+      - name: Compile application, test APK and unit tests
+        run: |
+          set -o pipefail
+          ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultDebug :app:assembleDefaultDebugAndroidTest --stacktrace --no-daemon 2>&1 | tee release-evidence/gradle.log
+      - name: Validate signed installable APK, ABI and 16K alignment
+        run: python3 ci/verify_apk.py ${{ matrix.arch }}
+      - name: Prepare hardware accelerated emulator
+        if: matrix.arch == 'x86_64'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          ln -s "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+      - name: Native Android interaction, actual shader pixels and both exports
+        if: matrix.arch == 'x86_64'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell wm size 1280x800
+            adb shell wm density 160
+            bash -c 'set +e; ./gradlew :app:connectedDefaultDebugAndroidTest --no-daemon > release-evidence/device-test.log 2>&1; result=$?; adb logcat -d > release-evidence/logcat.txt; adb exec-out run-as org.lumaview.mobile tar -C files -cf - integration > release-evidence/device-integration.tar; adb shell getprop > release-evidence/emulator-properties.txt; exit $result'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LumaView-Android-${{ matrix.arch }}
+          path: |
+            release-out
+            release-evidence
+            toolchain-evidence
+            app/build/reports/tests
+            app/build/test-results
+            app/build/outputs/androidTest-results
+          retention-days: 30
