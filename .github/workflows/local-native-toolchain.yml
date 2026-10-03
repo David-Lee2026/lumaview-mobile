@@ -1,0 +1,30 @@
+name: LumaView local native toolchain
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: [.github/workflows/local-native-toolchain.yml]
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: python3 ci/install_sdk.py
+      - name: Archive installed official native toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          tar czf out/android-ndk-r30-linux.tar.gz --exclude='*.ttf' --exclude='*.otf' --exclude='*.ttc' -C "$ANDROID_NDK_ROOT" .
+          sha256sum out/android-ndk-r30-linux.tar.gz > out/SHA256SUMS.txt
+          cp -r toolchain-evidence out/evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-ndk-r30-linux
+          path: out
+          retention-days: 7
