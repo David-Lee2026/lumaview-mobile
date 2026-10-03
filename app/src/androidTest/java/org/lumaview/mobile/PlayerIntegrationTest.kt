@@ -103,9 +103,14 @@ class PlayerIntegrationTest {
 
  @Test fun rendererFailureRecoversVisibleVideo(){
   val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  context.getSharedPreferences("history",0).edit().putLong("position:${Uri.fromFile(input)}",0).commit()
   activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
   try {
    waitFor("initial displayed video"){session.state.receipt?.get(6)==0.0};session.pause(true);waitFor("pause before render fault"){session.state.paused}
+   // A paused frame freezes its temporal exposure. Compare both render paths
+   // after the same explicit reset, rather than a partially adapted history.
+   val initialRequest=session.state.receipt!![3];session.enhance(EnhanceSettings(),true)
+   waitFor("stable paused exposure before fault"){session.state.paused&&session.state.receipt?.let{it[3]>initialRequest&&it[6]==0.0&&it[5]>0.0}==true}
    val before=mean(screenSnapshot("screen-before-fault"));assertTrue(before>4.0)
    val beforeRequest=session.state.receipt!![3]
    val bad=File(context.filesDir,"deliberately-invalid.glsl");bad.writeText("//!HOOK MAIN\n//!BIND HOOKED\nvec4 hook(){ return intentionally_invalid_shader; }\n")
