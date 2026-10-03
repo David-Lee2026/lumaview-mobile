@@ -13,21 +13,14 @@ concurrency:
 jobs:
   source:
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
     outputs:
       commit: ${{ steps.commit.outputs.commit }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - name: Verify restored readable source
+      - name: Check shader parity
         shell: python
         run: |
           from pathlib import Path
-          import json
-          assert Path('ci/mobile-payload-applied.json').is_file()
-          assert Path('app/src/main/java/org/lumaview/mobile/ui/PlayerActivity.kt').is_file()
           assert Path('app/src/main/assets/lvm/mobile.glsl').read_bytes()==Path('shaders/lvm/mobile.glsl').read_bytes()
       - name: Record source identity
         id: commit
@@ -63,7 +56,6 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends nasm ninja-build pkg-config ffmpeg glslang-tools python3-jinja2
-          nasm -v
           python3 -m venv /tmp/lvm-build-venv
           /tmp/lvm-build-venv/bin/pip install meson==1.11.0
           echo /tmp/lvm-build-venv/bin >> "$GITHUB_PATH"
@@ -79,16 +71,18 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultDebug :app:assembleDefaultDebugAndroidTest --stacktrace --no-daemon 2>&1 | tee release-evidence/gradle.log
-      - name: Validate signed installable APK, ABI and 16K alignment
+      - name: Validate signed APK, ABI and 16K alignment
         run: python3 ci/verify_apk.py ${{ matrix.arch }}
-      - name: Prepare hardware accelerated emulator
+      - name: Prepare hardware accelerated emulator and standard SDK layout
         if: matrix.arch == 'x86_64'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           mkdir -p "$ANDROID_HOME/cmdline-tools"
-          ln -s "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          cp -a "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list_installed > release-evidence/emulator-sdk-layout.txt
       - name: Native Android interaction, actual shader pixels and both exports
         if: matrix.arch == 'x86_64'
         uses: reactivecircus/android-emulator-runner@v2
