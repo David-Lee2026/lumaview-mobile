@@ -1,0 +1,80 @@
+name: LumaView retained APK final checks
+on:
+  push:
+    branches: [implementation/delivery-20261004]
+    paths: [.github/workflows/retained-export-verification.yml, ci/verify_exports.py, ci/test_export_validation.py]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: LumaView-delivery-x86_64
+          run-id: 37143572914
+          github-token: ${{ github.token }}
+          path: retained/android
+      - uses: actions/download-artifact@v4
+        with:
+          name: LumaView-delivery-arm64
+          run-id: 37143572914
+          github-token: ${{ github.token }}
+          path: retained/arm64
+      - name: Verify unchanged app sources and exact APK identity
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib,json,subprocess,zipfile
+          root=Path('final-checks');root.mkdir()
+          fixed='bc018acf3087d53d2eddf4e08cd94ff7d2b4b5c1'
+          paths=['app','shaders','ci/patch_engine.py','ci/crop_refresh_fix.py','ci/prepare_release.py','app/build.gradle','build.gradle','gradle.properties','settings.gradle']
+          assert not subprocess.check_output(['git','diff','--name-only',fixed,'HEAD','--',*paths],text=True).strip()
+          builds={};apks={}
+          for arch in ['arm64','android']:
+            base=Path('retained')/arch
+            r=json.loads((base/'release-evidence/BUILD_RESULT.json').read_text())
+            a=next((base/'release-out').glob('*.apk'))
+            assert r['sourceCommit']==fixed
+            assert hashlib.sha256(a.read_bytes()).hexdigest()==r['apkSha256']
+            builds[arch]=r;apks[arch]=a
+          tests=json.loads(Path('retained/android/release-evidence/ANDROID_RESULT.json').read_text())
+          assert tests['status']=='PASS' and len(tests['tests'])==5 and all(t['statusCode']==0 for t in tests['tests'])
+          assert tests['apkSha256']==builds['android']['apkSha256']
+          with zipfile.ZipFile(apks['arm64']) as a,zipfile.ZipFile(apks['android']) as b:
+            dex=[n for n in a.namelist() if n.endswith('.dex')]
+            assert dex and all(a.read(n)==b.read(n) for n in dex)
+          Path('final-checks/build-identity.json').write_text(json.dumps({'builds':builds,'androidTests':tests,'applicationSourceUnchanged':True,'identicalDexFilesAcrossAbis':len(dex),'postValidationCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()},indent=2))
+      - name: Install host media verifier and rerun validator regressions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          set -o pipefail
+          python3 -m unittest ci.test_export_validation ci.test_device_protocol ci.test_crop_refresh_fix -v 2>&1 | tee final-checks/host-tests.log
+      - name: Recreate exact deterministic source and verify actual Android exports
+        run: |
+          ffmpeg -hide_banner -loglevel error -f lavfi -i 'testsrc2=size=640x360:rate=30:duration=12' -f lavfi -i 'sine=frequency=440:duration=12' -vf 'format=rgb24,colorchannelmixer=rr=0.18:gg=0.18:bb=0.18,format=yuv420p' -c:v libx264 -preset fast -crf 18 -g 60 -keyint_min 60 -sc_threshold 0 -c:a aac -shortest -y final-checks/baseline-recreated.mp4
+          ffmpeg -version > final-checks/ffmpeg-host-version.txt
+          python3 ci/verify_exports.py retained/android/release-evidence/device/integration final-checks/baseline-recreated.mp4 > final-checks/export-checks.json
+      - name: Record limited test-channel gate without claiming physical verification
+        shell: python
+        run: |
+          from pathlib import Path
+          import json,hashlib,shutil
+          p=Path('final-checks');r=json.loads((p/'export-checks.json').read_text());b=json.loads((p/'build-identity.json').read_text())
+          assert r['copy']['videoPayloadsUnchanged'] and r['copy']['audioPayloadsUnchanged'] and r['exact']['fullyDecoded']
+          assert r['copy']['videoCopiedPackets']==240
+          (p/'FINAL_GATE.json').write_text(json.dumps({'channel':'test','status':'PASS','apkModifiedByPostValidation':False,'sourceCommit':b['builds']['arm64']['sourceCommit'],'arm64ApkSha256':b['builds']['arm64']['apkSha256'],'androidTestsPassed':5,'hostValidatorTestsPassed':14,'all38AcceptanceClaimed':False,'physicalMate20X':'NOT_RUN','note':'The previous workflow failed only because the host verifier assumed the first MP4 track was video. Corrected verifier checks codec_type and retains strict codec, dimensions, duration and packet-payload checks.'},indent=2))
+          for name in ['verify_exports.py','test_export_validation.py']:
+            shutil.copy2(Path('ci')/name,p/name)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LumaView-final-post-verification
+          path: final-checks
+          retention-days: 30
