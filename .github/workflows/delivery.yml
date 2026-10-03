@@ -1,0 +1,104 @@
+name: LumaView delivery verification
+on:
+  push:
+    branches: [implementation/delivery-20261004]
+    paths: [.github/workflows/delivery.yml, app/**, ci/prepare_delivery.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: lvm-delivery-final
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install official SDK and NDK
+        run: python3 ci/install_sdk.py
+      - name: Install media test tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Retrieve exact completed native build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 30); do
+            if gh run download 37141335660 --name LumaView-Android-${{ matrix.arch }} --dir base-build; then break; fi
+            sleep 10
+          done
+          test -f base-build/release-evidence/BUILD_RESULT.json
+      - name: Verify native identity and prepare fixtures
+        run: python3 ci/prepare_delivery.py ${{ matrix.arch }}
+      - name: Compile APK and unit tests
+        run: |
+          set -o pipefail
+          ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultDebug :app:assembleDefaultDebugAndroidTest --no-daemon --stacktrace 2>&1 | tee release-evidence/gradle.log
+          python3 ci/verify_apk.py ${{ matrix.arch }}
+      - name: Prepare emulator
+        if: matrix.arch == 'x86_64'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          cp -a "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+      - name: Reproduce interrupted touch defects
+        if: matrix.arch == 'x86_64'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell wm size 1280x800
+            adb shell wm density 160
+            bash -c 'set +e; ./gradlew :app:connectedDefaultDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=org.lumaview.mobile.TouchTerminationTest --no-daemon > release-evidence/touch-red.log 2>&1; result=$?; echo "$result" > release-evidence/touch-red-exit.txt; adb logcat -d > release-evidence/logcat.txt; exit 0'
+      - name: Require three actual assertion failures, not a build or device error
+        if: matrix.arch == 'x86_64'
+        shell: python
+        run: |
+          from pathlib import Path
+          import xml.etree.ElementTree as ET,json
+          names=[]
+          for p in Path('app/build/outputs/androidTest-results').rglob('TEST-*.xml'):
+            for case in ET.parse(p).getroot().iter('testcase'):
+              if case.find('failure') is not None: names.append(case.attrib['name'])
+          expected={'cancelledSeekHasExactlyOneTerminalEvent','secondPointerTerminatesThePreviousSeek','cancelledClipDragCommitsOneTerminalPreview'}
+          assert set(names)==expected,names
+          Path('release-evidence/RED_RESULT.json').write_text(json.dumps({'status':'EXPECTED_REGRESSIONS_REPRODUCED','failedTests':names},indent=2))
+      - name: Archive exact source
+        if: always()
+        run: |
+          mkdir -p release-source
+          git archive --format=tar.gz HEAD > release-source/LumaView-Mobile-source.tar.gz
+          git rev-parse HEAD > release-source/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LumaView-delivery-${{ matrix.arch }}
+          path: |
+            release-out
+            release-evidence
+            release-source
+            toolchain-evidence
+            app/build/test-results
+            app/build/outputs/androidTest-results
+          retention-days: 30
