@@ -1,0 +1,26 @@
+name: LumaView source checkpoint
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: [.github/workflows/source-checkpoint.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive exact current sources and CI state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p snapshot
+          git archive --format=tar.gz HEAD > snapshot/project-source.tar.gz
+          git rev-parse HEAD > snapshot/source-commit.txt
+          gh api 'repos/${{ github.repository }}/actions/runs?per_page=30' --jq '[.workflow_runs[]|{id,name,status,conclusion,head_sha,created_at}]' > snapshot/runs.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LumaView-source-checkpoint
+          path: snapshot
+          retention-days: 14
