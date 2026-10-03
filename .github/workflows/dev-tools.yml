@@ -1,0 +1,28 @@
+name: LumaView development inputs
+on:
+  push:
+    branches: [implementation/android-20261003]
+    paths: [.github/workflows/dev-tools.yml]
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Fetch pinned developer tools and API sources
+        run: |
+          set -euo pipefail
+          mkdir out
+          pip download --no-deps meson==1.11.0 -d out
+          for m in common transformer effect container extractor exoplayer decoder datasource muxer inspector; do
+            curl --fail --location --retry 2 "https://dl.google.com/dl/android/maven2/androidx/media3/media3-${m}/1.11.1/media3-${m}-1.11.1.aar" -o "out/media3-${m}.aar" || exit 1
+            curl --fail --location --retry 2 "https://dl.google.com/dl/android/maven2/androidx/media3/media3-${m}/1.11.1/media3-${m}-1.11.1-sources.jar" -o "out/media3-${m}-sources.jar" || exit 1
+          done
+          sha256sum out/* > out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lvm-development-inputs
+          path: out
+          retention-days: 7
