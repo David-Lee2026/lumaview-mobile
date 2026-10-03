@@ -106,8 +106,8 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   }
   val w=number("video-params/w")?.toInt()?:state.width;val h=number("video-params/h")?.toInt()?:state.height
   val dw=number("video-params/dw")?:w.toDouble();val dh=number("video-params/dh")?:h.toDouble()
-  val trc=text("video-params/gamma")?:"";val receipt=if(initialized)NativeStage.receipt()else null
-  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)+rotation)%360,if(w>0&&h>0&&dh>0)dw/dh*h/w else 1.0,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / ${text("hwdec-current")?:"未知"}",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong())
+  val trc=text("video-params/gamma")?:"";val receipt=if(initialized)NativeStage.receipt()?.takeIf{it.size>=14&&it[0]==generation.toDouble()&&it[1]==surfaceGeneration.toDouble()&&it[2]==revision.toDouble()&&it[3]==request.toDouble()}else null
+  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)%360+360)%360,if(w>0&&h>0&&dh>0)dw/dh*h/w else 1.0,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / ${text("hwdec-current")?:"未知"}",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong())
   state=s;ui.post{if(!closed&&s.generation==generation)callback(s)}
  }
 }

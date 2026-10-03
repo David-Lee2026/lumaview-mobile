@@ -72,7 +72,8 @@ object ExposureReference {
  fun target(v:DoubleArray,cap:Double):Double {
   val a=v.filter{it.isFinite()&&it>=0};if(a.isEmpty())return 0.0
   val mean=a.sumOf{log2(max(it,1.0/65536))}/a.size
-  return (log2(.18)-mean).coerceIn(0.0,cap.coerceIn(0.0,4.0))
+  val bright=a.count{it>=.75}.toDouble()/a.size
+  return (log2(.18)-mean).coerceIn(0.0,cap.coerceIn(0.0,4.0))*(1.0-(bright*1.5).coerceIn(0.0,.85))
  }
  fun smooth(a:Double,b:Double,dt:Double):Double {val d=dt.coerceIn(0.0,1.0);return a+((b-a)*(1-exp(-d/.4))).coerceIn(-d,d)}
  fun tone(v:Double,ev:Double):Double {val x=v.coerceIn(0.0,1.0);val g=2.0.pow(ev.coerceIn(0.0,4.0));return x*g/(1+x*(g-1))}

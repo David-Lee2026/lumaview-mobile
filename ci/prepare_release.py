@@ -25,6 +25,12 @@ for name,value in [('android-sdk-linux',os.environ['ANDROID_HOME']),('android-nd
  p=sdk/name
  if p.is_symlink():p.unlink()
  if not p.exists():p.symlink_to(value,target_is_directory=True)
+# Reuse every other native prefix; enable MP4 in the same fixed FFmpeg source.
+ffscript=root/'buildscripts/scripts/ffmpeg.sh';config=ffscript.read_text()
+assert '--enable-muxer=mov,matroska,mpegts' in config
+ffscript.write_text(config.replace('--enable-muxer=mov,matroska,mpegts','--enable-muxer=mov,mp4,matroska,mpegts'))
+with (ev/f'ffmpeg-{arch}.log').open('w') as f:subprocess.run(['./buildall.sh','-n','--arch',arch,'ffmpeg'],cwd=root/'buildscripts',env=dict(os.environ,cores='4'),stdout=f,stderr=subprocess.STDOUT,check=True)
+(ev/'ffmpeg-export-config.json').write_text(json.dumps({'source':'094a2f8a2a5e7fa64736e067de224ce28fdf5979','change':'MP4 muxer enabled; other native dependencies reused'},indent=2))
 subprocess.run([sys.executable,'ci/patch_engine.py'],check=True)
 env=dict(os.environ,cores='4')
 with (ev/f'engine-{arch}.log').open('w') as f:subprocess.run(['./buildall.sh','-n','--arch',arch,'mpv'],cwd=root/'buildscripts',env=env,stdout=f,stderr=subprocess.STDOUT,check=True)

@@ -2,7 +2,7 @@ name: LumaView Mobile APK and integration
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,36 +14,21 @@ jobs:
   source:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
     outputs:
       commit: ${{ steps.commit.outputs.commit }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: implementation/android-20261003
-      - name: Verify transfer and materialize readable source files
+          ref: ${{ github.sha }}
+      - name: Verify restored readable source
         shell: python
         run: |
           from pathlib import Path
-          import base64,hashlib,tarfile,io,json,subprocess
-          marker=Path('ci/mobile-payload-applied.json')
-          if not marker.exists():
-            parts=[Path('ci/payload.mobile.%d.xz.b64'%i).read_text().strip() for i in range(5)]
-            data=base64.b64decode(''.join(parts),validate=True)
-            actual=hashlib.sha256(data).hexdigest()
-            assert actual=='33e864eae8533444e45ebfcd0feec937a30027812a91f016a9e3e3896dfe4628',actual
-            with tarfile.open(fileobj=io.BytesIO(data),mode='r:xz') as t:
-              files=t.getnames()
-              for p in files:
-                assert Path(p).resolve().is_relative_to(Path.cwd())
-                assert not p.lower().endswith(('.ttf','.otf','.jks','.p12','.pem'))
-              t.extractall('.',filter='data')
-            marker.write_text(json.dumps({'sha256':actual,'files':files},indent=2))
-            subprocess.run(['git','config','user.name','LumaView Build'],check=True)
-            subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
-            subprocess.run(['git','add','--',*files,str(marker)],check=True)
-            subprocess.run(['git','commit','-m','feat: materialize reviewed mobile UI, native enhancement and export sources'],check=True)
-            subprocess.run(['git','push','origin','HEAD:implementation/android-20261003'],check=True)
+          import json
+          assert Path('ci/mobile-payload-applied.json').is_file()
+          assert Path('app/src/main/java/org/lumaview/mobile/ui/PlayerActivity.kt').is_file()
+          assert Path('app/src/main/assets/lvm/mobile.glsl').read_bytes()==Path('shaders/lvm/mobile.glsl').read_bytes()
       - name: Record source identity
         id: commit
         run: |
@@ -117,6 +102,12 @@ jobs:
             adb shell wm size 1280x800
             adb shell wm density 160
             bash -c 'set +e; ./gradlew :app:connectedDefaultDebugAndroidTest --no-daemon > release-evidence/device-test.log 2>&1; result=$?; adb logcat -d > release-evidence/logcat.txt; adb exec-out run-as org.lumaview.mobile tar -C files -cf - integration > release-evidence/device-integration.tar; adb shell getprop > release-evidence/emulator-properties.txt; exit $result'
+      - name: Decode exported media and compare compressed payloads
+        if: matrix.arch == 'x86_64'
+        run: |
+          mkdir -p release-evidence/decoded-integration
+          tar -xf release-evidence/device-integration.tar -C release-evidence/decoded-integration
+          python3 ci/verify_exports.py release-evidence/decoded-integration/integration app/src/androidTest/assets/baseline.mp4 > release-evidence/export-checks.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
