@@ -2,7 +2,7 @@ name: LumaView delivery verification
 on:
   push:
     branches: [implementation/delivery-20261004]
-    paths: [.github/workflows/delivery.yml, app/**, ci/prepare_delivery.py]
+    paths: [.github/workflows/delivery.yml, app/**, ci/prepare_delivery.py, ci/run_device_tests.py, ci/test_device_protocol.py, ci/video_pair_fixtures.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86_64]
+        arch: [arm64, x86_64]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,8 +41,12 @@ jobs:
             sleep 10
           done
           test -f base-build/release-evidence/BUILD_RESULT.json
-      - name: Verify native identity and prepare fixtures
-        run: python3 ci/prepare_delivery.py ${{ matrix.arch }}
+      - name: Verify native identity and prepare real video fixtures
+        run: |
+          python3 ci/prepare_delivery.py ${{ matrix.arch }}
+          python3 ci/video_pair_fixtures.py
+          python3 -m unittest ci.test_device_protocol -v 2>&1 | tee release-evidence/protocol-tests.log
+          cp app/src/androidTest/assets/roi-fixtures.json release-evidence/roi-fixtures.json
       - name: Compile APK and unit tests
         run: |
           set -o pipefail
@@ -57,7 +61,7 @@ jobs:
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           cp -a "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-      - name: Reproduce interrupted touch defects
+      - name: Installed Android player, pixels, exports and interrupted touch regressions
         if: matrix.arch == 'x86_64'
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -70,20 +74,10 @@ jobs:
           script: |
             adb shell wm size 1280x800
             adb shell wm density 160
-            bash -c 'set +e; ./gradlew :app:connectedDefaultDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=org.lumaview.mobile.TouchTerminationTest --no-daemon > release-evidence/touch-red.log 2>&1; result=$?; echo "$result" > release-evidence/touch-red-exit.txt; adb logcat -d > release-evidence/logcat.txt; exit 0'
-      - name: Require three actual assertion failures, not a build or device error
+            python3 ci/run_device_tests.py
+      - name: Decode both Android exports and verify compressed payloads
         if: matrix.arch == 'x86_64'
-        shell: python
-        run: |
-          from pathlib import Path
-          import xml.etree.ElementTree as ET,json
-          names=[]
-          for p in Path('app/build/outputs/androidTest-results').rglob('TEST-*.xml'):
-            for case in ET.parse(p).getroot().iter('testcase'):
-              if case.find('failure') is not None: names.append(case.attrib['name'])
-          expected={'cancelledSeekHasExactlyOneTerminalEvent','secondPointerTerminatesThePreviousSeek','cancelledClipDragCommitsOneTerminalPreview'}
-          assert set(names)==expected,names
-          Path('release-evidence/RED_RESULT.json').write_text(json.dumps({'status':'EXPECTED_REGRESSIONS_REPRODUCED','failedTests':names},indent=2))
+        run: python3 ci/verify_exports.py release-evidence/device/integration app/src/androidTest/assets/baseline.mp4 > release-evidence/export-checks.json
       - name: Archive exact source
         if: always()
         run: |
