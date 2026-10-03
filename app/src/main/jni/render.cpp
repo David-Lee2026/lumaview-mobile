@@ -1,5 +1,4 @@
 #include <jni.h>
-#include <vector>
 
 #include <mpv/client.h>
 
@@ -13,20 +12,10 @@ extern "C" {
 };
 
 static jobject surface;
-static std::vector<jobject> retired_surfaces;
-// mpv VO changes are queued. Keep every JNI handle alive until terminate_destroy
-// has joined the VO thread, then release all handles together.
-void release_surfaces(JNIEnv *env) {
-    if(surface)env->DeleteGlobalRef(surface);
-    surface=nullptr;
-    for(auto ref:retired_surfaces)env->DeleteGlobalRef(ref);
-    retired_surfaces.clear();
-}
 
 jni_func(void, attachSurface, jobject surface_) {
     CHECK_MPV_INIT();
 
-    if(surface)retired_surfaces.push_back(surface);
     surface = env->NewGlobalRef(surface_);
     if (!surface)
         die("invalid surface provided");
@@ -44,6 +33,11 @@ jni_func(void, detachSurface) {
     if (result < 0)
          ALOGE("mpv_set_option(wid) returned error %s", mpv_error_string(result));
 
-    if(surface)env->DeleteGlobalRef(surface);
+    env->DeleteGlobalRef(surface);
     surface = NULL;
+}
+
+// A retained TextureView Surface is released only after mpv_terminate_destroy joins VO.
+extern "C" JNIEXPORT void JNICALL Java_org_lumaview_mobile_player_NativeStage_releaseSurfaceAfterShutdown(JNIEnv *env,jobject) {
+    if (!g_mpv && surface) { env->DeleteGlobalRef(surface); surface=nullptr; }
 }

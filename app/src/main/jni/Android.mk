@@ -68,6 +68,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE    := libplayer
 LOCAL_CFLAGS    := -Werror
 LOCAL_CPPFLAGS  += -std=c++11
+LOCAL_CPP_FEATURES := exceptions
 LOCAL_SRC_FILES := \
 	main.cpp \
 	render.cpp \
@@ -75,16 +76,10 @@ LOCAL_SRC_FILES := \
 	jni_utils.cpp \
 	property.cpp \
 	event.cpp \
-	thumbnail.cpp
+	thumbnail.cpp \
+	lumaview/enhancement_bridge.cpp \
+	lumaview/export_bridge.cpp
 LOCAL_LDLIBS    := -llog -latomic
-LOCAL_SHARED_LIBRARIES := swscale avcodec mpv
+LOCAL_SHARED_LIBRARIES := swscale avcodec avformat avutil mpv
 
-include $(BUILD_SHARED_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := liblumaexport
-LOCAL_SRC_FILES := lumaview/export.cpp
-LOCAL_CPPFLAGS := -std=c++17 -Wall
-LOCAL_C_INCLUDES := $(PREFIX)/include
-LOCAL_SHARED_LIBRARIES := avformat avcodec avutil
 include $(BUILD_SHARED_LIBRARY)

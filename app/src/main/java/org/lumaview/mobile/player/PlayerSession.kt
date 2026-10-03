@@ -1,0 +1,113 @@
+package org.lumaview.mobile.player
+
+import android.content.Context
+import android.graphics.SurfaceTexture
+import android.os.*
+import android.view.Surface
+import `is`.xyz.mpv.MPVLib
+import org.lumaview.mobile.*
+import org.lumaview.mobile.storage.ReadLease
+import java.io.File
+import java.util.concurrent.atomic.AtomicLong
+
+data class Track(val id:Int,val type:String,val title:String,val selected:Boolean,val ffIndex:Int?)
+data class PlayerState(val generation:Long=0,val positionUs:Long?=null,val durationUs:Long?=null,val paused:Boolean=true,val speed:Double=1.0,val width:Int=0,val height:Int=0,val rotation:Int=0,val sar:Double=1.0,val seekable:Boolean=false,val decoder:String="尚未打开",val hdr:Boolean=false,val tracks:List<Track> = emptyList(),val receipt:DoubleArray?=null,val error:String?=null,val dropped:Long?=null,val outputFrames:Long?=null)
+/** All native calls, including teardown, are serialized on one process-wide worker. */
+class PlayerSession(private val context:Context,private val callback:(PlayerState)->Unit) {
+ companion object {private val thread=HandlerThread("LumaView-player").apply{start()};private val worker=Handler(thread.looper);private val serial=AtomicLong()}
+ private val ui=Handler(Looper.getMainLooper());private var initialized=false;private var closed=false
+ private var input:ReadLease?=null;private var surface:Surface?=null;private var texture:SurfaceTexture?=null
+ private var generation=0L;private var surfaceGeneration=0L;private var revision=0L;private var request=0L
+ private var settings=EnhanceSettings();private var crop:RoiRect?=null;private var rotation=0
+ private var error:String?=null;private var resumeUs=0L;private var resumePaused=false;private var resumeSpeed=1.0
+ @Volatile var state=PlayerState();private set
+ private var loop:ClipRange?=null;private var seekResume:Boolean?=null;private var lastTrackRead=0L;private var trackCache=emptyList<Track>()
+ private val logLines=ArrayDeque<String>()
+ private val logObserver=object:MPVLib.LogObserver {override fun logMessage(prefix:String,level:Int,text:String){
+  if(level<=30){synchronized(logLines){if(logLines.size>=30)logLines.removeFirst();logLines.add("$prefix: ${text.take(320)}")}}
+ }}
+ private val observer=object:MPVLib.EventObserver {
+  override fun eventProperty(property:String){};override fun eventProperty(property:String,value:Long){};override fun eventProperty(property:String,value:Boolean){};override fun eventProperty(property:String,value:String){};override fun eventProperty(property:String,value:Double){}
+  override fun event(eventId:Int){if(eventId==21)worker.post{if(initialized&&!closed){seekResume?.let{MPVLib.setPropertyBoolean("pause",it)};seekResume=null}}}
+ }
+ private fun safe(block:()->Unit){worker.post{if(!closed)try{block()}catch(t:Throwable){error=t.message?:t.javaClass.simpleName;publish()}}}
+ fun attach(st:SurfaceTexture,w:Int,h:Int){
+  safe {
+   if(texture!==st){shutdownEngine();texture?.release();texture=st;surfaceGeneration=serial.incrementAndGet();surface=Surface(st)}
+   st.setDefaultBufferSize(w.coerceAtLeast(1),h.coerceAtLeast(1))
+   if(input!=null&&!initialized)initialize()
+   if(initialized)MPVLib.setPropertyString("android-surface-size","${w}x$h")
+  }
+ }
+ /** TextureView returns false from onSurfaceTextureDestroyed; we own its final release. */
+ fun detach(st:SurfaceTexture){worker.post{
+  if(texture===st){resumeUs=state.positionUs?:resumeUs;resumePaused=true;shutdownEngine();surface?.release();surface=null;texture=null;st.release()}
+  else st.release()
+ }}
+ fun open(lease:ReadLease,positionUs:Long=0){safe{
+  shutdownEngine();input?.close();input=lease;generation=serial.incrementAndGet();revision++;crop=null;rotation=0;loop=null;error=null;resumeUs=positionUs;resumePaused=false;resumeSpeed=1.0;trackCache=emptyList()
+  if(surface!=null)initialize();publish()
+ }}
+ private fun initialize(){
+  val lease=input?:return;val target=surface?:return
+  val shader=File(context.filesDir,"mobile.glsl")
+  context.assets.open("lvm/mobile.glsl").use{src->shader.outputStream().use{src.copyTo(it)}}
+  MPVLib.create(context.applicationContext)
+  val options=linkedMapOf("config" to "no","load-scripts" to "no","autoload-files" to "no","ytdl" to "no","load-auto-profiles" to "no","osc" to "no","input-default-bindings" to "no","osd-level" to "0","vo" to "gpu","gpu-context" to "android","opengl-es" to "yes","hwdec" to "mediacodec,mediacodec-copy","ao" to "audiotrack,opensles","video-sync" to "audio","scale" to "bilinear","dscale" to "bilinear","cscale" to "bilinear","interpolation" to "no","deband" to "no","gpu-shader-cache-dir" to File(context.cacheDir,"shader-cache").absolutePath,"demuxer-max-bytes" to "33554432","demuxer-max-back-bytes" to "16777216","keep-open" to "yes","idle" to "yes","force-window" to "yes","pause" to "yes","volume" to "100","sub-auto" to "no","audio-file-auto" to "no","glsl-shaders" to shader.absolutePath)
+  options.forEach{(k,v)->val rc=MPVLib.setOptionString(k,v);check(rc>=0){"内核选项不可用：$k ($rc)"}}
+  MPVLib.addObserver(observer);MPVLib.addLogObserver(logObserver);MPVLib.init();initialized=true
+  MPVLib.attachSurface(target)
+  // fd:// is a read-only lease kept alive for the entire media session.
+  MPVLib.command(arrayOf("loadfile","fd://${lease.fd}","replace"))
+  MPVLib.setPropertyDouble("speed",resumeSpeed);MPVLib.setPropertyInt("video-rotate",rotation)
+  crop?.let{MPVLib.setPropertyString("video-crop",it.crop())}
+  if(resumeUs>0)MPVLib.command(arrayOf("seek",(resumeUs/1e6).toString(),"absolute+exact"))
+  MPVLib.setPropertyBoolean("pause",resumePaused)
+  submit(true);worker.removeCallbacks(tick);worker.postDelayed(tick,200)
+ }
+ private fun shutdownEngine(){
+  worker.removeCallbacks(tick)
+  if(initialized){
+   MPVLib.removeObserver(observer);MPVLib.removeLogObserver(logObserver)
+   // This is the real termination barrier. No sleep or optimistic property assignment.
+   MPVLib.destroy();initialized=false;NativeStage.releaseSurfaceAfterShutdown();subtitleLeases.forEach{it.close()};subtitleLeases.clear()
+  }
+ }
+ fun close(){closed=true;worker.post{shutdownEngine();surface?.release();surface=null;texture?.release();texture=null;input?.close();input=null}}
+ fun pause(value:Boolean){safe{resumePaused=value;if(initialized)MPVLib.setPropertyBoolean("pause",value)}}
+ fun speed(value:Double){safe{resumeSpeed=value.coerceIn(.25,2.0);if(initialized)MPVLib.setPropertyDouble("speed",resumeSpeed)}}
+ fun seek(us:Long,final:Boolean=true,restorePaused:Boolean?=null){safe{
+  if(initialized&&state.seekable){val t=us.coerceIn(0,state.durationUs?:Long.MAX_VALUE);seekResume=restorePaused;MPVLib.command(arrayOf("seek",(t/1e6).toString(),if(final)"absolute+exact" else "absolute+keyframes"));if(final)submit(true)}
+ }}
+ fun setLoop(range:ClipRange?){safe{loop=range;if(initialized){MPVLib.setPropertyString("ab-loop-a",range?.let{(it.startUs/1e6).toString()}?:"no");MPVLib.setPropertyString("ab-loop-b",range?.let{(it.endUs/1e6).toString()}?:"no")}}}
+ fun viewport(value:RoiRect?,rotate:Int=rotation){safe{
+  crop=value;rotation=((rotate%360)+360)%360;revision++;settings=settings.copy(locked=false)
+  if(initialized){MPVLib.setPropertyInt("video-rotate",rotation);MPVLib.setPropertyString("video-crop",crop?.crop()?:"");submit(true)}
+ }}
+ fun enhance(value:EnhanceSettings,reset:Boolean=false){safe{settings=value;if(initialized)submit(reset)}}
+ private fun submit(reset:Boolean){request++;val rc=NativeStage.submit(settings.values(),generation,surfaceGeneration,revision,request,reset);if(rc!=0)error="增强参数提交失败 ($rc)"}
+ fun frame(forward:Boolean){safe{if(initialized){MPVLib.setPropertyBoolean("pause",true);MPVLib.command(arrayOf(if(forward)"frame-step" else "frame-back-step"))}}}
+ fun selectTrack(type:String,id:Int?){safe{if(initialized)MPVLib.setPropertyString(if(type=="audio")"aid" else "sid",id?.toString()?:"no")}}
+ fun externalSubtitle(lease:ReadLease){safe{if(initialized){ // mpv opens its own file descriptor; retain lease until session end.
+  subtitleLeases.add(lease);MPVLib.command(arrayOf("sub-add","fd://${lease.fd}","select",lease.name))
+ }else lease.close()}}
+ private val subtitleLeases=ArrayList<ReadLease>()
+ fun screenshot(file:File,reply:(Result<File>)->Unit){safe{val r=runCatching{check(initialized);MPVLib.command(arrayOf("screenshot-to-file",file.absolutePath,"window"));check(file.exists()&&file.length()>0){"当前画面无法截图"};file};ui.post{reply(r)}}}
+ fun diagnostic(reply:(String)->Unit){safe{val text="LumaView Mobile 0.1.0-test\nAPI ${Build.VERSION.SDK_INT}\nABI ${Build.SUPPORTED_ABIS.joinToString()}\n${state.decoder}\nSize ${state.width}×${state.height}\nHDR ${state.hdr}\nMode receipt ${state.receipt?.joinToString()}\n";ui.post{reply(text)}}}
+ /** Free hardware decoder before a Transformer job, and reopen the same media afterward. */
+ fun suspendForExport(done:()->Unit){safe{resumeUs=state.positionUs?:0;resumePaused=true;resumeSpeed=state.speed;shutdownEngine();ui.post(done)}}
+ fun resumeAfterExport(){safe{if(!initialized&&input!=null&&surface!=null)initialize()}}
+ private val tick=object:Runnable {override fun run(){if(!initialized||closed)return;try{publish()}catch(t:Throwable){error=t.message};worker.postDelayed(this,250)}}
+ private fun publish(){
+  fun number(k:String)=if(initialized)MPVLib.getPropertyDouble(k)?.takeIf{it.isFinite()}else null
+  fun text(k:String)=if(initialized)MPVLib.getPropertyString(k)else null
+  if(initialized&&SystemClock.elapsedRealtime()-lastTrackRead>1500){lastTrackRead=SystemClock.elapsedRealtime();val count=MPVLib.getPropertyInt("track-list/count")?:0
+   trackCache=(0 until count.coerceIn(0,128)).map{n->val b="track-list/$n";Track(MPVLib.getPropertyInt("$b/id")?:n,text("$b/type")?:"unknown",listOfNotNull(text("$b/lang"),text("$b/title"),text("$b/codec")).joinToString(" · "),MPVLib.getPropertyBoolean("$b/selected")==true,MPVLib.getPropertyInt("$b/ff-index"))}
+  }
+  val w=number("video-params/w")?.toInt()?:state.width;val h=number("video-params/h")?.toInt()?:state.height
+  val dw=number("video-params/dw")?:w.toDouble();val dh=number("video-params/dh")?:h.toDouble()
+  val trc=text("video-params/gamma")?:"";val receipt=if(initialized)NativeStage.receipt()else null
+  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)+rotation)%360,if(w>0&&h>0&&dh>0)dw/dh*h/w else 1.0,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / ${text("hwdec-current")?:"未知"}",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong())
+  state=s;ui.post{if(!closed&&s.generation==generation)callback(s)}
+ }
+}

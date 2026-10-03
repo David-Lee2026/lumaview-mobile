@@ -1,0 +1,33 @@
+{
+  "sha256": "33e864eae8533444e45ebfcd0feec937a30027812a91f016a9e3e3896dfe4628",
+  "files": [
+    "app/src/main/java/org/lumaview/mobile/Core.kt",
+    "app/src/main/java/org/lumaview/mobile/ui/ClipTimelineView.kt",
+    "app/src/main/java/org/lumaview/mobile/ui/LibraryActivity.kt",
+    "app/src/main/java/org/lumaview/mobile/ui/PlayerActivity.kt",
+    "app/src/main/java/org/lumaview/mobile/export/NativeExporter.kt",
+    "app/src/main/java/org/lumaview/mobile/export/ExactExporter.kt",
+    "app/src/main/java/org/lumaview/mobile/viewport/RoiOverlayView.kt",
+    "app/src/main/java/org/lumaview/mobile/storage/DocumentAccess.kt",
+    "app/src/main/java/org/lumaview/mobile/storage/OutputTransaction.kt",
+    "app/src/main/java/org/lumaview/mobile/player/PlayerSession.kt",
+    "app/src/main/java/org/lumaview/mobile/player/NativeStage.kt",
+    "app/src/androidTest/java/org/lumaview/mobile/PlayerIntegrationTest.kt",
+    "app/src/main/jni/lumaview/export_bridge.cpp",
+    "app/src/main/jni/lumaview/enhancement_bridge.cpp",
+    "shaders/lvm/mobile.glsl",
+    "app/build.gradle",
+    "app/src/main/AndroidManifest.xml",
+    "app/src/default/AndroidManifest.xml",
+    "app/src/debug/AndroidManifest.xml",
+    "app/src/main/res/values/styles_lvm.xml",
+    "app/src/main/jni/main.cpp",
+    "app/src/main/jni/render.cpp",
+    "app/src/main/jni/Android.mk",
+    "ci/patch_engine.py",
+    "ci/prepare_release.py",
+    "ci/verify_apk.py",
+    "qa/CoreSmoke.kt",
+    "qa/native/contract_test.c"
+  ]
+}

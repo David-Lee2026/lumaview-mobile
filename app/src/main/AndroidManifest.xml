@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <uses-feature android:glEsVersion="0x00030000" android:required="true" />
-  <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-  <application android:label="LumaView Mobile 光影增强播放器" android:icon="@mipmap/mpv_launcher_icon" android:allowBackup="false" android:theme="@style/AppTheme">
-    <activity android:name="org.lumaview.mobile.LumaActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
-      <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
-      <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="video/*" /></intent-filter>
-    </activity>
-  </application>
+ <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+ <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+ <application android:allowBackup="false" android:supportsRtl="true" android:label="LumaView 光影增强" android:icon="@mipmap/mpv_launcher_icon" android:theme="@style/LumaViewTheme" android:resizeableActivity="true">
+  <activity android:name="org.lumaview.mobile.ui.LibraryActivity" android:exported="true">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+  <activity android:name="org.lumaview.mobile.ui.PlayerActivity" android:exported="true" android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" android:enableOnBackInvokedCallback="false">
+   <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><data android:scheme="content"/><data android:mimeType="video/*"/></intent-filter>
+  </activity>
+ </application>
 </manifest>
