@@ -2,10 +2,13 @@ name: LumaView Android toolchain and fixed sources
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/android-toolchain.yml, ci/install_sdk.py]
+    paths: [.github/workflows/android-toolchain.yml]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: lvm-toolchain-provision
+  cancel-in-progress: true
 jobs:
   provision:
     runs-on: ubuntu-24.04
@@ -28,7 +31,7 @@ jobs:
           printf 'int lvm_probe(void) { return 23; }\n' > "$RUNNER_TEMP/probe.c"
           "$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang" -shared -fPIC -Wl,-z,max-page-size=16384 "$RUNNER_TEMP/probe.c" -o evidence/libtoolchain_probe.so
           "$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -hl evidence/libtoolchain_probe.so > evidence/arm64-link-probe.txt
-          tar czf evidence/official-sdk-compile-inputs.tar.gz -C "$ANDROID_HOME" platforms/android-36 build-tools/36.0.0 platform-tools --exclude='*.ttf' --exclude='*.otf'
+          tar czf evidence/official-sdk-compile-inputs.tar.gz --exclude='*.ttf' --exclude='*.otf' -C "$ANDROID_HOME" platforms/android-36 build-tools/36.0.0 platform-tools
       - name: Acquire immutable source revisions
         shell: python
         run: |
