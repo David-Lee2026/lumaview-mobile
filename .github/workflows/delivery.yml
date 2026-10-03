@@ -2,7 +2,7 @@ name: LumaView delivery verification
 on:
   push:
     branches: [implementation/delivery-20261004]
-    paths: [.github/workflows/delivery.yml, app/**, ci/prepare_delivery.py, ci/run_device_tests.py, ci/test_device_protocol.py, ci/video_pair_fixtures.py]
+    paths: [.github/workflows/delivery.yml, app/**, ci/prepare_release.py, ci/patch_engine.py, ci/crop_refresh_fix.py, ci/run_device_tests.py, ci/test_device_protocol.py, ci/test_crop_refresh_fix.py, ci/video_pair_fixtures.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -28,24 +28,24 @@ jobs:
           java-version: '21'
       - name: Install official SDK and NDK
         run: python3 ci/install_sdk.py
-      - name: Install media test tool
+      - name: Install native build prerequisites
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ffmpeg
-      - name: Retrieve exact completed native build
-        env:
-          GH_TOKEN: ${{ github.token }}
+          sudo apt-get install -y --no-install-recommends nasm ninja-build pkg-config ffmpeg glslang-tools python3-jinja2
+          python3 -m venv /tmp/lvm-build-venv
+          /tmp/lvm-build-venv/bin/pip install meson==1.11.0
+          echo /tmp/lvm-build-venv/bin >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-${{ matrix.arch }}
+          run-id: 37127934301
+          github-token: ${{ github.token }}
+          path: native-input
+      - name: Rebuild modified FFmpeg, mpv and JNI from retained fixed sources
         run: |
-          for i in $(seq 1 30); do
-            if gh run download 37141335660 --name LumaView-Android-${{ matrix.arch }} --dir base-build; then break; fi
-            sleep 10
-          done
-          test -f base-build/release-evidence/BUILD_RESULT.json
-      - name: Verify native identity and prepare real video fixtures
-        run: |
-          python3 ci/prepare_delivery.py ${{ matrix.arch }}
+          python3 ci/prepare_release.py ${{ matrix.arch }}
           python3 ci/video_pair_fixtures.py
-          python3 -m unittest ci.test_device_protocol -v 2>&1 | tee release-evidence/protocol-tests.log
+          python3 -m unittest ci.test_device_protocol ci.test_crop_refresh_fix -v 2>&1 | tee release-evidence/protocol-tests.log
           cp app/src/androidTest/assets/roi-fixtures.json release-evidence/roi-fixtures.json
       - name: Compile APK and unit tests
         run: |
