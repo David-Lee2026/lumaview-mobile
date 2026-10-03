@@ -31,8 +31,8 @@ class ClipTimelineView(context:Context):View(context){
   when(e.actionMasked){
    MotionEvent.ACTION_DOWN->{parent.requestDisallowInterceptTouchEvent(true);val a=x(range.startUs);val b=x(range.endUs);owner=if(abs(a-b)<48*dp){if(e.y<height/2)1 else 2}else if(abs(e.x-a)<abs(e.x-b))1 else 2;update(e.x,false)}
    MotionEvent.ACTION_MOVE->if(owner!=0)update(e.x,false)
-   MotionEvent.ACTION_UP->{if(owner!=0)update(e.x,true);owner=0;performClick()}
-   MotionEvent.ACTION_CANCEL->owner=0
+   MotionEvent.ACTION_UP->{if(owner!=0)update(e.x,true);owner=0;parent?.requestDisallowInterceptTouchEvent(false);performClick()}
+   MotionEvent.ACTION_CANCEL->{val captured=owner!=0;owner=0;if(captured)onChange(range,true);parent?.requestDisallowInterceptTouchEvent(false)}
   };return true
  }
  private fun update(x:Float,end:Boolean){val t=time(x);range=if(owner==1)ClipRange(t.coerceAtMost(range.endUs-1),range.endUs)else ClipRange(range.startUs,t.coerceAtLeast(range.startUs+1));onChange(range,end);invalidate()}
