@@ -2,7 +2,7 @@ name: LumaView Android toolchain and fixed sources
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/android-toolchain.yml]
+    paths: [.github/workflows/android-toolchain.yml, ci/install_sdk.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,34 +16,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install and execute the official SDK and NDK
-        shell: bash
+      - name: Install official SDK and NDK
+        run: python3 ci/install_sdk.py
+      - name: Execute official cross-compiler and package local build inputs
         run: |
           set -euo pipefail
           mkdir -p evidence sources
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;30.0.16248370' 'platform-tools' 2>&1 | tee evidence/sdk-install.log
+          cp -r toolchain-evidence evidence/toolchain
           java -version 2>&1 | tee evidence/java-version.txt
-          sdkmanager --list_installed > evidence/sdk-packages.txt
-          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version > evidence/ndk-clang.txt
-          cp "$ANDROID_HOME/ndk/30.0.16248370/source.properties" evidence/ndk-source.properties
-          "$ANDROID_HOME/build-tools/36.0.0/aapt2" version > evidence/aapt2-version.txt
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" version > evidence/apksigner-version.txt
           "$ANDROID_HOME/platform-tools/adb" version > evidence/adb-version.txt
           printf 'int lvm_probe(void) { return 23; }\n' > "$RUNNER_TEMP/probe.c"
-          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang" -shared -fPIC -Wl,-z,max-page-size=16384 "$RUNNER_TEMP/probe.c" -o evidence/libtoolchain_probe.so
-          "$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -hl evidence/libtoolchain_probe.so > evidence/arm64-link-probe.txt
+          "$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang" -shared -fPIC -Wl,-z,max-page-size=16384 "$RUNNER_TEMP/probe.c" -o evidence/libtoolchain_probe.so
+          "$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -hl evidence/libtoolchain_probe.so > evidence/arm64-link-probe.txt
+          tar czf evidence/official-sdk-compile-inputs.tar.gz -C "$ANDROID_HOME" platforms/android-36 build-tools/36.0.0 platform-tools --exclude='*.ttf' --exclude='*.otf'
       - name: Acquire immutable source revisions
         shell: python
         run: |
           from pathlib import Path
-          import urllib.request,json,re,subprocess,hashlib,tarfile
-          upstream='fdf74f6830c47dbaa8a22ac79726e8303f1db5af'
-          url='https://api.github.com/repos/mpv-android/mpv-android/releases/tags/2026-09-17'
-          request=urllib.request.Request(url,headers={'User-Agent':'LumaView-build'})
-          release=json.load(urllib.request.urlopen(request,timeout=90))
-          Path('evidence/upstream-release.json').write_text(json.dumps(release,indent=2))
-          print(release['body'])
-          repos={'mpv-android':('mpv-android/mpv-android',upstream),'mpv':('mpv-player/mpv','0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6'),'ffmpeg':('FFmpeg/FFmpeg','094a2f8a2a5e7fa64736e067de224ce28fdf5979')}
+          import urllib.request,json,subprocess,hashlib,tarfile
+          repos={'mpv-android':('mpv-android/mpv-android','fdf74f6830c47dbaa8a22ac79726e8303f1db5af'),'mpv':('mpv-player/mpv','0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6'),'ffmpeg':('FFmpeg/FFmpeg','094a2f8a2a5e7fa64736e067de224ce28fdf5979')}
           manifest={}
           for name,(repo,sha) in repos.items():
               path=Path('sources')/name
@@ -65,5 +56,7 @@ jobs:
         if: always()
         with:
           name: official-android-toolchain-and-sources
-          path: evidence
+          path: |
+            evidence
+            toolchain-evidence
           retention-days: 30
