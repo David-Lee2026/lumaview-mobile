@@ -146,11 +146,11 @@ class PlayerIntegrationTest {
    val done=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("完成");assertTrue(done.isNotEmpty());assertTrue(done[0].performAction(AccessibilityNodeInfo.ACTION_CLICK))
    waitFor("exposure setting render"){session.state.receipt?.let{it[3]>request&&it[6]==0.0}==true}
    val after=mean(screenSnapshot("screen-exposure-after"));assertTrue("exposure setting must change actual displayed pixels",after>before*1.05)
-   val oldSurface=session.state.receipt!![1];val oldPosition=session.state.positionUs!!
+   val oldSurface=session.state.receipt!![1];val oldPosition=session.state.positionUs!!;val oldGeneration=session.state.generation
    assertTrue(inst.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME))
    waitFor("player hidden"){var focus=true;inst.runOnMainSync{focus=activity.hasWindowFocus()};!focus};Thread.sleep(1000)
-   context.startActivity(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-   waitFor("holder recreated after returning"){var focus=false;inst.runOnMainSync{focus=activity.hasWindowFocus()};focus&&session.state.receipt?.let{it[1]!=oldSurface&&it[6]==0.0}==true&&kotlin.math.abs((session.state.positionUs?:-10_000_000)-oldPosition)<500_000}
+   context.startActivity(Intent(context,PlayerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+   waitFor("holder recreated after returning"){var focus=false;inst.runOnMainSync{focus=activity.hasWindowFocus()};focus&&session.state.generation==oldGeneration&&session.state.receipt?.let{it[1]!=oldSurface&&it[6]==0.0}==true&&kotlin.math.abs((session.state.positionUs?:-10_000_000)-oldPosition)<500_000}
    assertTrue("return must keep playback position",kotlin.math.abs(session.state.positionUs!!-oldPosition)<500_000)
    val returned=mean(screenSnapshot("screen-after-home-return"));assertTrue("recreated holder must display video",returned>4.0)
    File(evidence,"DISPLAY_RESULT.json").writeText(JSONObject().put("api",android.os.Build.VERSION.SDK_INT).put("softwareLuma",software).put("hardwareCopyLuma",hardware).put("beforeExposureLuma",before).put("afterExposureLuma",after).put("returnedLuma",returned).put("surfaceRecreated",true).put("settingsVisible",true).put("physicalDevice",false).toString(2))
