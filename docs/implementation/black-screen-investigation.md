@@ -21,3 +21,5 @@
 已锁定曝光时，原画比较切换保留曝光历史，避免仍显示“锁定”但比较返回后重新计算曝光。
 
 同一 run 的 API 29 显示检查暴露另一条故障：所有系统视频区域为 RGB 0，内核截图和 ROI 像素验证仍正常；HWUI 反复记录 `dequeueBuffer failed -110` / `reserveNext failed -2147483648`，Android 窗口的控件画面亦停滞。这确认“内核产出帧”不足以证明真正显示。将显示容器从 TextureView 改回固定官方 mpv-android 使用的 SurfaceView，视频直接进入独立 Surface，不再经过 HWUI 的外部纹理消费路径；ROI 和控制条继续作为 Android View 覆盖。SurfaceHolder 拥有 Surface，应用不自行 release；surfaceDestroyed 返回前由串行 worker 完成 mpv 终止屏障。具体 HWUI 故障机制及与用户华为设备是否相同仍未确认，以新构建的 API 29 实际窗口结果检验此修复。
+
+独立审查未发现 SurfaceView 补丁明确阻塞，建议补充 Surface 重建验证。实际测试按系统 Home 后返回，要求 Surface 回执代次变化、位置保持且系统窗口重新显示视频；该局部检查不替代完整生命周期压力测试。
