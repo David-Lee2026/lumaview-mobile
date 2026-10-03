@@ -2,7 +2,7 @@ name: LumaView Mobile APK and integration
 on:
   push:
     branches: [implementation/verified-apk-20261004]
-    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/final_fixes.py, ci/run_instrumentation.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,15 +21,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
-      - name: Apply and commit reviewed readable source migration once
+      - name: Apply and commit reviewed readable source migrations once
         run: |
+          git config user.name 'LumaView build'
+          git config user.email 'lumaview-build@users.noreply.github.com'
           if [ ! -f ci/verified-fixes-applied.json ]; then
             python3 ci/release_fix.py
-            git config user.name 'LumaView build'
-            git config user.email 'lumaview-build@users.noreply.github.com'
             git add app/src ci/patch_engine.py shaders/lvm/mobile.glsl ci/verified-fixes-applied.json
             git add -u ci/verified-fixes.b64
             git commit -m 'fix(mobile): apply GLES, lifecycle and exact state hardening'
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+          if [ ! -f ci/final-fixes-applied.json ]; then
+            python3 ci/final_fixes.py
+            git add app/src ci/prepare_release.py ci/final-fixes-applied.json
+            git commit -m 'fix(mobile): handle cancelled scrubs and test ROI with real videos'
             git push origin HEAD:${{ github.ref_name }}
           fi
       - name: Check shader parity
@@ -98,7 +104,6 @@ jobs:
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           cp -a "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list_installed > release-evidence/emulator-sdk-layout.txt
       - name: Native Android interaction, actual shader pixels and both exports
         if: matrix.arch == 'x86_64'
         uses: reactivecircus/android-emulator-runner@v2
@@ -112,7 +117,7 @@ jobs:
           script: |
             adb shell wm size 1280x800
             adb shell wm density 160
-            bash -c 'set +e; ./gradlew :app:connectedDefaultDebugAndroidTest --no-daemon > release-evidence/device-test.log 2>&1; result=$?; adb logcat -d > release-evidence/logcat.txt; adb exec-out run-as org.lumaview.mobile tar -C files -cf - integration > release-evidence/device-integration.tar; adb shell getprop > release-evidence/emulator-properties.txt; exit $result'
+            python3 ci/run_instrumentation.py
       - name: Decode exported media and compare compressed payloads
         if: matrix.arch == 'x86_64'
         run: |
