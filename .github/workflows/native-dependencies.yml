@@ -2,7 +2,7 @@ name: LumaView native dependencies
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/native-dependencies.yml, ci/native_dependencies.py, ci/install_sdk.py]
+    paths: [.github/workflows/native-dependencies.yml, ci/native_dependencies.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,11 +25,15 @@ jobs:
           java-version: '21'
       - name: Install official SDK and NDK
         run: python3 ci/install_sdk.py
-      - name: Install native build dependencies
+      - name: Install pinned native build tools
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y autoconf automake pkg-config libtool ninja-build unzip wget meson gperf nasm python3-jinja2 glslang-tools
+          sudo apt-get install -y autoconf automake pkg-config libtool ninja-build unzip wget gperf nasm python3-jinja2 glslang-tools
+          python3 -m venv --system-site-packages "$RUNNER_TEMP/lvm-build-python"
+          "$RUNNER_TEMP/lvm-build-python/bin/pip" install 'meson==1.11.0'
+          echo "$RUNNER_TEMP/lvm-build-python/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/lvm-build-python/bin/meson" --version
       - name: Acquire and pin sources
         run: python3 ci/native_dependencies.py
       - name: Build native dependencies and engine
