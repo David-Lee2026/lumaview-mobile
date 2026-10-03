@@ -50,4 +50,20 @@ class CoreTest {
         assertEquals(0.0, ExposureReference.tone(0.0, 4.0), 0.0)
         assertEquals(1.0, ExposureReference.tone(1.0, 4.0), 0.000001)
     }
+    @Test fun croppedAnamorphicRotationsMapBackToTheSameSourcePixel() {
+        val aperture=RoiRect(120.0,60.0,1800.0,1020.0)
+        for (rotation in listOf(0,90,180,270)) {
+            val map=RoiMath(1920,1080,1000,700,rotation,1.5,aperture,aperture)
+            val screen=map.screen(420.0,300.0);val source=map.point(screen.first,screen.second)!!
+            assertEquals(420.0,source.first,.001);assertEquals(300.0,source.second,.001)
+            assertNull(map.point(map.left-1,map.top+10))
+        }
+    }
+    @Test fun cropAlignmentIsSharedWithTheViewportAndStaysInsideAperture() {
+        val aperture=RoiRect(121.0,61.0,1799.0,1019.0)
+        val actual=RoiRect(121.2,61.8,1798.7,1018.9).forCrop(aperture)!!
+        assertEquals(RoiRect(122.0,62.0,1798.0,1018.0),actual)
+        assertEquals("1676x956+122+62",actual.crop())
+    }
+
 }

@@ -12,6 +12,11 @@ data class RoiRect(val left:Double,val top:Double,val right:Double,val bottom:Do
   val r=(ceil(right/2)*2).toInt();val b=(ceil(bottom/2)*2).toInt()
   return "${r-l}x${b-t}+$l+$t"
  }
+ fun forCrop(bounds:RoiRect):RoiRect? {
+  val l=max(floor(left/2)*2,ceil(bounds.left/2)*2);val t=max(floor(top/2)*2,ceil(bounds.top/2)*2)
+  val r=min(ceil(right/2)*2,floor(bounds.right/2)*2);val b=min(ceil(bottom/2)*2,floor(bounds.bottom/2)*2)
+  return RoiRect(l,t,r,b).takeIf{it.valid()}
+ }
  fun clamped(w:Int,h:Int):RoiRect? {val v=RoiRect(left.coerceIn(0.0,w.toDouble()),top.coerceIn(0.0,h.toDouble()),right.coerceIn(0.0,w.toDouble()),bottom.coerceIn(0.0,h.toDouble()));return v.takeIf{it.valid()}}
  fun zoomed(factor:Double,fx:Double=.5,fy:Double=.5):RoiRect {
   val f=factor.coerceIn(.125,8.0);val w=width/f;val h=height/f
@@ -25,7 +30,7 @@ data class RoiRect(val left:Double,val top:Double,val right:Double,val bottom:Do
  }
 }
 
-class RoiMath(val sw:Int,val sh:Int,val vw:Int,val vh:Int,val rotation:Int=0,val sar:Double=1.0,val roi:RoiRect=RoiRect(0.0,0.0,sw.toDouble(),sh.toDouble())) {
+class RoiMath(val sw:Int,val sh:Int,val vw:Int,val vh:Int,val rotation:Int=0,val sar:Double=1.0,val roi:RoiRect=RoiRect(0.0,0.0,sw.toDouble(),sh.toDouble()),val bounds:RoiRect=RoiRect(0.0,0.0,sw.toDouble(),sh.toDouble())) {
  private val rot=((rotation%360)+360)%360
  private val rw=roi.width*sar;private val rh=roi.height
  private val dw=if(rot%180==90)rh else rw;private val dh=if(rot%180==90)rw else rh

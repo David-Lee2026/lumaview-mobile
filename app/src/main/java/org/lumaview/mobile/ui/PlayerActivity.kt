@@ -105,7 +105,8 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   if(previous!=quality)sendEnhancement()
  }
  private fun sendEnhancement(){val effective=when(quality){1->enhancement.copy(detail=0f);2->enhancement.copy(detail=0f,denoise=0f);3->enhancement.copy(mode=4,detail=0f,denoise=0f);4->enhancement.copy(bypass=true);else->enhancement};session.enhance(effective)}
- private fun refreshMath(){if(s.width<=0||s.height<=0||videoFrame.width<=0||videoFrame.height<=0)return;overlay.math=RoiMath(s.width,s.height,videoFrame.width,videoFrame.height,s.rotation,s.sar,crop?:RoiRect(0.0,0.0,s.width.toDouble(),s.height.toDouble()));overlay.current=crop;overlay.invalidate()}
+ private fun sourceBounds()=s.sourceRect?:RoiRect(0.0,0.0,s.width.toDouble(),s.height.toDouble())
+ private fun refreshMath(){if(s.width<=0||s.height<=0||videoFrame.width<=0||videoFrame.height<=0)return;overlay.math=RoiMath(s.width,s.height,videoFrame.width,videoFrame.height,s.rotation,s.sar,crop?:sourceBounds(),sourceBounds());overlay.current=crop;overlay.invalidate()}
  private fun preview(us:Long,end:Boolean,restore:Boolean?=null){val now=SystemClock.elapsedRealtime();if(end||now-lastPreview>=150){lastPreview=now;lastSeekAt=now;session.seek(us,end,restore)}}
  private fun relative(delta:Long){if(touchLocked)return;session.seek(((s.positionUs?:0)+delta).coerceAtLeast(0));lastSeekAt=SystemClock.elapsedRealtime();wake()}
  private fun updateVolume(){if(::volume.isInitialized)volume.progress=audio.getStreamVolume(AudioManager.STREAM_MUSIC)}

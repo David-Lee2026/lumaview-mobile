@@ -87,7 +87,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           mkdir -p "$ANDROID_HOME/cmdline-tools"
-          ln -s "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          mv "$ANDROID_HOME/bootstrap/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
       - name: Native Android interaction, actual shader pixels and both exports
         if: matrix.arch == 'x86_64'
         uses: reactivecircus/android-emulator-runner@v2

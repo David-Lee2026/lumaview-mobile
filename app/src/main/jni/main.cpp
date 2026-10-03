@@ -32,6 +32,7 @@ mpv_handle *g_mpv;
 std::atomic<bool> g_event_thread_request_exit(false);
 
 static pthread_t event_thread_id;
+static bool event_thread_started=false;
 static jobject global_appctx;
 extern void release_surfaces(JNIEnv *env);
 
@@ -73,12 +74,11 @@ jni_func(void, init) {
     if (!g_mpv)
         die("mpv is not created");
 
-    if (mpv_initialize(g_mpv) < 0)
-        die("mpv init failed");
+    if (mpv_initialize(g_mpv) < 0) {env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"mpv init failed");return;}
 
     g_event_thread_request_exit = false;
-    if (pthread_create(&event_thread_id, NULL, event_thread, NULL) != 0)
-        die("thread create failed");
+    if (pthread_create(&event_thread_id, NULL, event_thread, NULL) != 0) {env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"event thread create failed");return;}
+    event_thread_started=true;
     pthread_setname_np(event_thread_id, "event_thread");
 }
 
@@ -91,7 +91,7 @@ jni_func(void, destroy) {
     // poke event thread and wait for it to exit
     g_event_thread_request_exit = true;
     mpv_wakeup(g_mpv);
-    pthread_join(event_thread_id, NULL);
+    if(event_thread_started){pthread_join(event_thread_id, NULL);event_thread_started=false;}
 
     mpv_terminate_destroy(g_mpv);
     g_mpv = NULL;

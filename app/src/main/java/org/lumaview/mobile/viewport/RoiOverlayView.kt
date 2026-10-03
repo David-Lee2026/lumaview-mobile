@@ -27,17 +27,17 @@ class RoiOverlayView(context:Context):View(context) {
  private val pinch=ScaleGestureDetector(context,object:ScaleGestureDetector.SimpleOnScaleGestureListener(){
   override fun onScaleBegin(d:ScaleGestureDetector):Boolean= !selecting&&!locked
   override fun onScale(d:ScaleGestureDetector):Boolean {
-   val m=math?:return false;val bounds=RoiRect(0.0,0.0,m.sw.toDouble(),m.sh.toDouble());val r=current?:bounds
+   val m=math?:return false;val bounds=m.bounds;val r=current?:bounds
    val focus=m.point(d.focusX.toDouble(),d.focusY.toDouble())?:return true
    val relative=(bounds.width/r.width*d.scaleFactor).coerceIn(1.0,8.0)
    val factor=relative/(bounds.width/r.width)
-   val next=r.zoomed(factor,((focus.first-r.left)/r.width).coerceIn(0.0,1.0),((focus.second-r.top)/r.height).coerceIn(0.0,1.0)).translateClamped(0.0,0.0,bounds)
+   val next=r.zoomed(factor,((focus.first-r.left)/r.width).coerceIn(0.0,1.0),((focus.second-r.top)/r.height).coerceIn(0.0,1.0)).translateClamped(0.0,0.0,bounds).forCrop(bounds)?:return true
    current=if(relative<=1.001)null else next;onViewport(current);owner="pinch";changed=true;return true
   }
  })
  fun begin(){if(locked)return;selecting=true;selection=null;owner="";activeId=-1;onSelection(false);invalidate()}
  fun cancel(){selecting=false;selection=null;owner="";activeId=-1;invalidate()}
- fun apply():RoiRect? {val r=selection?.takeIf{it.valid()}?:return null;selecting=false;current=r;selection=null;invalidate();return r}
+ fun apply():RoiRect? {val r=selection?.forCrop(math?.bounds?:return null)?:return null;selecting=false;current=r;selection=null;invalidate();return r}
  override fun onDraw(c:Canvas){super.onDraw(c)
   if(!selecting)return
   val m=math?:return
@@ -76,7 +76,7 @@ class RoiOverlayView(context:Context):View(context) {
      if(owner=="draw")selection=m.select(startX.toDouble(),startY.toDouble(),x.toDouble(),y.toDouble(),24.0*dp)
      else {val r=base;val a=startSource;val p=m.point(x.toDouble().coerceIn(m.left,m.left+m.displayWidth),y.toDouble().coerceIn(m.top,m.top+m.displayHeight))
       if(r!=null&&a!=null&&p!=null){
-       val b=RoiRect(0.0,0.0,m.sw.toDouble(),m.sh.toDouble())
+       val b=m.bounds
        selection=if(owner=="move")r.translateClamped(p.first-a.first,p.second-a.second,b)else {
         val q=when(corner){0->RoiRect(p.first,p.second,r.right,r.bottom);1->RoiRect(r.left,p.second,p.first,r.bottom);2->RoiRect(r.left,r.top,p.first,p.second);else->RoiRect(p.first,r.top,r.right,p.second)}
         q.clamped(m.sw,m.sh)?:selection
@@ -85,7 +85,7 @@ class RoiOverlayView(context:Context):View(context) {
      };onSelection(selection!=null);invalidate()
     }else if(owner=="pan"){
      val a=m.point(prevX.toDouble(),prevY.toDouble());val b=m.point(x.toDouble(),y.toDouble());val r=current
-     if(a!=null&&b!=null&&r!=null){current=r.translateClamped(a.first-b.first,a.second-b.second,RoiRect(0.0,0.0,m.sw.toDouble(),m.sh.toDouble()));onViewport(current)}
+     if(a!=null&&b!=null&&r!=null){current=r.translateClamped(a.first-b.first,a.second-b.second,m.bounds).forCrop(m.bounds);onViewport(current)}
     }else {
      if(owner=="normal"&&changed)owner=if(abs(x-startX)>abs(y-startY))"seek" else if(startX<width/2)"brightness" else "volume"
      when(owner){"seek"->onSeek((x-startX)/width,false);"volume"->onVolume((prevY-y)/height);"brightness"->onBrightness((prevY-y)/height)}
