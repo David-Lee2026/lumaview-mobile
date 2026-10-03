@@ -30,14 +30,14 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  private var enhancement=EnhanceSettings();private var priorPause=true;private var dragging=false;private var lastPreview=0L;private var priorSeekPause=true;private var controls=true;private var alwaysControls=false;private var touchLocked=false
  private var clipRange:ClipRange?=null;private var loop=false;private var gestureSeekStart=0L
  private val handler=Handler(Looper.getMainLooper());private val work=Executors.newSingleThreadExecutor();private var exact:ExactExporter?=null
- private var busy=false;private var pickingDestination=false;private var temporary:File?=null;private var outputSummary="";private var saveMime="video/mp4";private var saveExtension="mp4";private var dialog:ProgressDialog?=null;private var cancel=AtomicBoolean(false)
+ private var busy=false;private var pickingDestination=false;private var temporary:File?=null;private var outputSummary="";private var saveMime="video/mp4";private var saveExtension="mp4";private var dialog:ProgressDialog?=null;private var cancel=AtomicBoolean(false);private var nativeToken=0L
  private val governor=QualityGovernor();private var lastFrames=0L;private var lastDrops=0L;private var startAt=0L;private var lastSeekAt=0L;private var quality=0;private var thermal:Int?=null
  private val hide=Runnable{if(!s.paused&&!overlay.selecting&&clipPanel.visibility!=View.VISIBLE&&!alwaysControls&&!touchLocked&&!busy)showControls(false)}
  private val Int.dp get()=(this*resources.displayMetrics.density).toInt()
  private fun button(label:String,action:()->Unit)=Button(this).apply{text=label;isAllCaps=false;minWidth=48.dp;minimumHeight=48.dp;textSize=13f;setPadding(10.dp,0,10.dp,0);setOnClickListener{if(!touchLocked||this==lockButton){wake();action()}}}
  private fun text(value:String,size:Float=13f)=TextView(this).apply{this.text=value;textSize=size;setTextColor(0xffdfebfa.toInt());setPadding(4.dp,2.dp,4.dp,2.dp)}
  private fun row()=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
- private fun message(value:String){if(!isFinishing)AlertDialog.Builder(this).setTitle("LumaView").setMessage(value).setPositiveButton("知道了",null).show()}
+ private fun message(value:String){if(!isFinishing&&!isDestroyed)AlertDialog.Builder(this).setTitle("LumaView").setMessage(value).setPositiveButton("知道了",null).show()}
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState);window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);audio=getSystemService(AUDIO_SERVICE) as AudioManager;volumeControlStream=AudioManager.STREAM_MUSIC
   access=DocumentAccess(this);session=PlayerSession(this){state->render(state)}
@@ -45,6 +45,14 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   val u=intent.data
   if(u==null||u.scheme !in listOf("content","file")){message("请从文件页或系统文件选择器打开视频");startActivity(Intent(this,LibraryActivity::class.java));finish();return}
   uri=u;access.rememberGrant(u,intent.flags);open(u)
+ }
+ override fun onNewIntent(next:Intent){
+  super.onNewIntent(next)
+  if(busy){message("导出期间请先完成或取消当前任务，再打开其他视频");return}
+  val u=next.data?:return
+  if(u.scheme !in listOf("content","file")){message("只接受本地媒体文档");return}
+  intent=next;crop=null;userRotation=0;clipRange=null;loop=false;overlay.cancel();overlay.current=null
+  enhancement=enhancement.copy(locked=false);access.rememberGrant(u,next.flags);open(u)
  }
  private fun buildUi(){
   root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff0b1420.toInt())}
@@ -87,7 +95,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   if(!dragging&&duration!=null&&duration>0)seek.progress=((s.positionUs?:0)*10000.0/duration).toInt().coerceIn(0,10000)
   time.text="${formatTime(s.positionUs)} / ${formatTime(duration)}";playButton.text=if(s.paused)"▶ 播放" else "Ⅱ 暂停";speedButton.text=String.format(java.util.Locale.ROOT,"%.2f×",s.speed)
   val names=arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先")
-  val r=s.receipt;val label=if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
+  val r=s.receipt;val label=if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==3.0)"源尺寸超出增强预算：保持原画" else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
   status.text=s.error?:"$label${if(crop!=null)" · 区域增强" else ""}${if(quality>0)" · 负载降级 $quality" else ""} · ${s.width}×${s.height}"
   refreshMath();if(clipPanel.visibility==View.VISIBLE){if(clipRange==null&&duration!=null&&duration>0)clipRange=ClipRange(0,duration);updateClip()}
   if(s.paused)showControls(true)else if(wasPaused&&controls){handler.removeCallbacks(hide);handler.postDelayed(hide,3000)}
@@ -130,22 +138,23 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  }
  private fun tracks(type:String){val list=s.tracks.filter{it.type==type};val labels=arrayOf("关闭")+list.map{"${it.id} · ${it.title}"};AlertDialog.Builder(this).setTitle(if(type=="audio")"音轨" else "字幕").setItems(labels){_,i->session.selectTrack(if(type=="audio")"audio" else "sub",if(i==0)null else list[i-1].id)}.show()}
  private fun requestedTracks():IntArray {fun id(type:String):Int{val all=s.tracks.filter{it.type==type};val selected=all.firstOrNull{it.selected};if(selected==null)return if(type=="video")-1 else -2;return selected.ffIndex?:if(all.size==1)-1 else throw IllegalStateException("多轨道编号未确认，请重新打开视频后选择轨道")};return intArrayOf(id("video"),id("audio"),id("sub"))}
- private fun startProgress(title:String){busy=true;cancel=AtomicBoolean(false);session.pause(true);dialog=ProgressDialog(this).apply{setTitle(title);setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);max=100;setCancelable(false);setButton(DialogInterface.BUTTON_NEGATIVE,"取消"){_,_->cancelJob()};show()};wake()}
- private fun closeProgress(){dialog?.dismiss();dialog=null}
+ private fun startProgress(title:String){busy=true;cancel=AtomicBoolean(false);nativeToken=NativeExporter.begin();session.pause(true);dialog=ProgressDialog(this).apply{setTitle(title);setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);max=100;setCancelable(false);setButton(DialogInterface.BUTTON_NEGATIVE,"取消"){_,_->cancelJob()};show()};wake()}
+ private fun closeProgress(){runCatching{dialog?.dismiss()};dialog=null}
  private fun cancelJob(){cancel.set(true);NativeExporter.cancel();exact?.cancel();status.text="正在安全取消…"}
- private fun failJob(t:Throwable){closeProgress();busy=false;temporary?.delete();temporary=null;exact=null;session.resumeAfterExport();message("未完成：${t.message}")}
+ private fun failJob(t:Throwable){if(isDestroyed){temporary?.delete();return};closeProgress();busy=false;temporary?.delete();temporary=null;exact=null;session.resumeAfterExport();message("未完成：${t.message}")}
  private fun rangeReady():ClipRange?{val r=clipRange;if(busy){message("已有导出任务，请先完成或取消");return null};if(r==null||!r.valid(s.durationUs)){message("请先选择有效的 A／B 范围");return null};return r}
- private fun exportCopy(){val r=rangeReady()?:return;val source=uri?:return;val ids=try{requestedTracks()}catch(e:Exception){message(e.message?:"轨道错误");return};startProgress("分析可独立解码的边界")
+ private fun exportCopy(){val r=rangeReady()?:return;val source=uri?:return;val ids=try{requestedTracks()}catch(e:Exception){message(e.message?:"轨道错误");return};startProgress("分析可独立解码的边界");val token=nativeToken;val stop=cancel
   val poll=object:Runnable{override fun run(){if(!busy||dialog==null)return;dialog?.progress=(NativeExporter.progress()*100).toInt();handler.postDelayed(this,400)}};handler.post(poll)
-  access.openRead(source){opened->opened.onSuccess{lease->work.execute{val result=runCatching{val o=JSONObject(NativeExporter.analyze(lease.fd,ids[0],ids[1],ids[2],r.startUs,r.endUs));if(o.has("error"))error(o.getString("error"));o};lease.close();handler.post{closeProgress();if(cancel.get()){busy=false;return@post};result.onSuccess{plan->confirmCopy(plan)}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
+  access.openRead(source){opened->if(isDestroyed||token!=nativeToken){opened.getOrNull()?.close();return@openRead};opened.onSuccess{lease->work.execute{val result=runCatching{val o=JSONObject(NativeExporter.analyze(lease.fd,ids[0],ids[1],ids[2],r.startUs,r.endUs,token));if(o.has("error"))error(o.getString("error"));o};lease.close();handler.post{if(isDestroyed||token!=nativeToken)return@post;closeProgress();if(stop.get()){busy=false;return@post};result.onSuccess{plan->confirmCopy(plan)}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
  }
  private fun confirmCopy(plan:JSONObject){
+  if(isDestroyed)return
   val a=plan.getLong("startUs");val b=plan.getLong("endUs");val container=plan.getString("container")
   AlertDialog.Builder(this).setTitle("原码流导出确认").setMessage("请求：${formatTime(plan.getLong("requestedStartUs"),true)} — ${formatTime(plan.getLong("requestedEndUs"),true)}\n实际安全区间：${formatTime(a,true)} — ${formatTime(b,true)}\n起止向外扩至安全解码边界，可能包含额外内容。\n不重新编码；不会写入播放增强、放大或临时旋转。\n不保留轨道：${plan.optString("omitted").ifEmpty{"无"}}\n输出：${if(container=="mp4")"MP4" else "MKV"}")
    .setNegativeButton("取消"){_,_->busy=false}.setPositiveButton("导出"){_,_->writeCopy(plan,container)}.setNeutralButton("改用 MKV"){_,_->writeCopy(plan,"matroska")}.setOnCancelListener{busy=false}.show()
  }
- private fun writeCopy(plan:JSONObject,container:String){val source=uri?:return;startProgress("复制原始压缩数据");saveExtension=if(container=="mp4")"mp4" else "mkv";saveMime=if(container=="mp4")"video/mp4" else "video/x-matroska";val out=File(cacheDir,"clip-${System.nanoTime()}.$saveExtension");temporary=out
-  access.openRead(source){result->result.onSuccess{lease->work.execute{val done=runCatching{val json=JSONObject(NativeExporter.write(lease.fd,plan.getInt("video"),plan.getInt("audio").let{if(it<0)-2 else it},plan.getInt("subtitle").let{if(it<0)-2 else it},plan.getLong("startUs"),plan.getLong("endUs"),out.absolutePath,container));if(json.has("error"))error(json.getString("error"));json.toString()};lease.close();handler.post{done.onSuccess{outputSummary="原码流导出\n${formatTime(plan.getLong("startUs"),true)} — ${formatTime(plan.getLong("endUs"),true)}\n$it";chooseDestination()}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
+ private fun writeCopy(plan:JSONObject,container:String){val source=uri?:return;startProgress("复制原始压缩数据");val token=nativeToken;val stop=cancel;saveExtension=if(container=="mp4")"mp4" else "mkv";saveMime=if(container=="mp4")"video/mp4" else "video/x-matroska";val out=File(cacheDir,"clip-${System.nanoTime()}.$saveExtension");temporary=out
+  access.openRead(source){result->if(isDestroyed||token!=nativeToken){result.getOrNull()?.close();out.delete();return@openRead};result.onSuccess{lease->work.execute{val done=runCatching{val json=JSONObject(NativeExporter.write(lease.fd,plan.getInt("video"),plan.getInt("audio").let{if(it<0)-2 else it},plan.getInt("subtitle").let{if(it<0)-2 else it},plan.getLong("startUs"),plan.getLong("endUs"),out.absolutePath,container,token));if(json.has("error"))error(json.getString("error"));json.toString()};lease.close();handler.post{if(isDestroyed||token!=nativeToken){out.delete();return@post};if(stop.get()){failJob(IllegalStateException("已取消"));return@post};done.onSuccess{outputSummary="原码流导出\n${formatTime(plan.getLong("startUs"),true)} — ${formatTime(plan.getLong("endUs"),true)}\n$it";chooseDestination()}.onFailure{failJob(it)}}}}.onFailure{failJob(it)}}
   val poll=object:Runnable{override fun run(){if(!busy||dialog==null)return;dialog?.progress=(NativeExporter.progress()*100).toInt();handler.postDelayed(this,400)}};handler.post(poll)
  }
  private fun exportExact(){val r=rangeReady()?:return;val source=uri?:return
@@ -153,13 +162,13 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   if(s.tracks.count{it.type=="video"}>1||s.tracks.count{it.type=="audio"}>1){message("当前精确模式不能可靠映射多视频／多音轨源，请先用原码流导出所选轨道，再打开该片段精确裁剪。不会默认导出错误音轨。");return}
   val hasAudio=s.tracks.any{it.type=="audio"&&it.selected};val bitrate=(s.width.toLong()*s.height*4).coerceIn(2_000_000,32_000_000).toInt()
   AlertDialog.Builder(this).setTitle("精确重编码导出").setMessage("范围：${formatTime(r.startUs,true)} — ${formatTime(r.endUs,true)}\nH.264 / AAC，目标码率 ${bitrate/1_000_000.0} Mbps，优先保持原尺寸。\n字幕不写入；无播放增强、区域裁剪或临时旋转。\n这不是原码流；设备不支持会停止，不静默降低分辨率。")
-   .setNegativeButton("取消",null).setPositiveButton("开始"){_,_->startProgress("精确重编码");saveMime="video/mp4";saveExtension="mp4";val out=File(cacheDir,"exact-${System.nanoTime()}.mp4");temporary=out;session.suspendForExport{exact=ExactExporter(this);exact!!.start(source,r,out,hasAudio,bitrate,{dialog?.progress=it}){res->res.onSuccess{outputSummary=it;exact=null;session.resumeAfterExport();chooseDestination()}.onFailure{failJob(it)}}}}.show()
+   .setNegativeButton("取消",null).setPositiveButton("开始"){_,_->startProgress("精确重编码");saveMime="video/mp4";saveExtension="mp4";val out=File(cacheDir,"exact-${System.nanoTime()}.mp4");temporary=out;session.suspendForExport{if(isDestroyed||cancel.get()){out.delete();busy=false;return@suspendForExport};exact=ExactExporter(this);exact!!.start(source,r,out,hasAudio,bitrate,{dialog?.progress=it}){res->res.onSuccess{outputSummary=it;exact=null;session.resumeAfterExport();chooseDestination()}.onFailure{failJob(it)}}}}.show()
  }
  private fun capture(){if(busy)return;startProgress("保存当前视频画面");val out=File(cacheDir,"frame-${System.nanoTime()}.png");temporary=out;saveMime="image/png";saveExtension="png";session.screenshot(out){r->r.onSuccess{outputSummary="截图包括当前区域、像素增强和播放器已显示的字幕，不含 Android 控制按钮。";chooseDestination()}.onFailure{failJob(it)}}}
- private fun chooseDestination(){closeProgress();if(cancel.get()){failJob(IllegalStateException("已取消"));return};pickingDestination=true;startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(saveMime).putExtra(Intent.EXTRA_TITLE,"${fileName.substringBeforeLast('.')}-LumaView-${System.currentTimeMillis()}.$saveExtension"),4)}
+ private fun chooseDestination(){if(isDestroyed){temporary?.delete();return};closeProgress();if(cancel.get()){failJob(IllegalStateException("已取消"));return};pickingDestination=true;startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(saveMime).putExtra(Intent.EXTRA_TITLE,"${fileName.substringBeforeLast('.')}-LumaView-${System.currentTimeMillis()}.$saveExtension"),4)}
  @Deprecated("Activity result") override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data)
   if(requestCode==3&&resultCode==RESULT_OK){data?.data?.let{u->access.rememberGrant(u,data.flags);access.openRead(u){r->r.onSuccess{session.externalSubtitle(it)}.onFailure{message(it.message?:"字幕不可读")}}};return}
-  if(requestCode==4){pickingDestination=false;val dest=data?.data;val temp=temporary;if(resultCode!=RESULT_OK||dest==null||temp==null){temp?.delete();temporary=null;busy=false;return};startProgress("写入新文件");work.execute{val r=runCatching{OutputTransaction.saveNew(this,temp,dest,uri,cancel){p->handler.post{dialog?.progress=(p*100).toInt()}}};handler.post{closeProgress();busy=false;temporary=null;temp.delete();r.onSuccess{message("已保存到系统选择的位置。\n$outputSummary")}.onFailure{message("保存失败：${it.message}")}}}}
+  if(requestCode==4){pickingDestination=false;val dest=data?.data;val temp=temporary;if(resultCode!=RESULT_OK||dest==null||temp==null){temp?.delete();temporary=null;busy=false;return};startProgress("写入新文件");val stop=cancel;work.execute{val r=runCatching{OutputTransaction.saveNew(this,temp,dest,uri,stop){p->handler.post{dialog?.progress=(p*100).toInt()}}};handler.post{temp.delete();if(isDestroyed)return@post;closeProgress();busy=false;temporary=null;r.onSuccess{message("已保存到系统选择的位置。\n$outputSummary")}.onFailure{message("保存失败：${it.message}")}}}}
  }
  override fun onSurfaceTextureAvailable(st:SurfaceTexture,w:Int,h:Int){session.attach(st,w,h)}
  override fun onSurfaceTextureSizeChanged(st:SurfaceTexture,w:Int,h:Int){session.attach(st,w,h);refreshMath()}
@@ -167,6 +176,6 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
  override fun onSurfaceTextureUpdated(st:SurfaceTexture){}
  override fun onPause(){super.onPause();if(::session.isInitialized){session.pause(true);uri?.let{s.positionUs?.let{pos->getSharedPreferences("history",0).edit().putLong("position:$it",pos).apply()}}}}
  override fun onStop(){super.onStop();if(busy&&!pickingDestination&&!isChangingConfigurations)cancelJob()}
- override fun onDestroy(){handler.removeCallbacksAndMessages(null);if(::session.isInitialized)session.close();if(busy)cancelJob();super.onDestroy()}
+ override fun onDestroy(){handler.removeCallbacksAndMessages(null);if(::session.isInitialized)session.close();if(busy)cancelJob();closeProgress();work.shutdown();super.onDestroy()}
  @Deprecated("Back") override fun onBackPressed(){when{touchLocked->{touchLocked=false;overlay.locked=false;lockButton.text="锁定";wake()};overlay.selecting->{overlay.cancel();selectionRow.visibility=View.GONE;session.pause(priorPause)};clipPanel.visibility==View.VISIBLE->toggleClip();else->super.onBackPressed()}}
 }

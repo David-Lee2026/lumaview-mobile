@@ -62,7 +62,7 @@ jobs:
       - name: Install native build prerequisites
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ninja-build pkg-config ffmpeg glslang-tools python3-jinja2
+          sudo apt-get install -y --no-install-recommends ninja-build pkg-config nasm ffmpeg glslang-tools python3-jinja2
           python3 -m venv /tmp/lvm-build-venv
           /tmp/lvm-build-venv/bin/pip install meson==1.11.0
           echo /tmp/lvm-build-venv/bin >> "$GITHUB_PATH"

@@ -15,24 +15,26 @@ extern "C" {
 #include <libavutil/error.h>
 }
 namespace {
-std::atomic<bool> stopped(false);
+std::atomic<int64_t> generation(0);
 std::atomic<double> fraction(0);
 std::string quote(const std::string &s){std::string o="\"";for(unsigned char c:s){if(c=='"'||c=='\\'){o+='\\';o+=c;}else if(c>=32)o+=c;else o+=' ';}return o+'"';}
 void fail(int rc,const char *what){if(rc<0){char b[AV_ERROR_MAX_STRING_SIZE];av_strerror(rc,b,sizeof(b));throw std::runtime_error(std::string(what)+": "+b);}}
 struct Input {
- AVFormatContext *f=nullptr;AVIOContext *io=nullptr;int fd;int64_t offset=0,size=-1;
- explicit Input(int descriptor):fd(descriptor){
+ AVFormatContext *f=nullptr;AVIOContext *io=nullptr;int fd;int64_t token;
+ bool cancelled()const{return generation.load()!=token;}int64_t offset=0,size=-1;
+ explicit Input(int descriptor,int64_t ticket):fd(descriptor),token(ticket){
+  if(cancelled())throw std::runtime_error("已取消");
   struct stat st{};if(fstat(fd,&st)==0&&S_ISREG(st.st_mode))size=st.st_size;
   auto buf=(unsigned char*)av_malloc(65536);if(!buf)throw std::runtime_error("内存不足");
   io=avio_alloc_context(buf,65536,0,this,read,nullptr,seek);if(!io){av_free(buf);throw std::runtime_error("IO初始化失败");}
-  f=avformat_alloc_context();f->pb=io;f->flags|=AVFMT_FLAG_CUSTOM_IO;f->interrupt_callback={interrupt,nullptr};
+  f=avformat_alloc_context();f->pb=io;f->flags|=AVFMT_FLAG_CUSTOM_IO;f->interrupt_callback={interrupt,this};
   try{fail(avformat_open_input(&f,nullptr,nullptr,nullptr),"打开源文件");fail(avformat_find_stream_info(f,nullptr),"读取媒体轨道");}catch(...){cleanup();throw;}
  }
  ~Input(){cleanup();}
  void cleanup(){if(f)avformat_close_input(&f);if(io){av_freep(&io->buffer);avio_context_free(&io);}}
- static int read(void *p,uint8_t *buf,int count){auto s=(Input*)p;if(stopped.load())return AVERROR_EXIT;ssize_t n;do{n=pread(s->fd,buf,count,s->offset);}while(n<0&&errno==EINTR);if(n<0)return AVERROR(errno);if(n==0)return AVERROR_EOF;s->offset+=n;return (int)n;}
+ static int read(void *p,uint8_t *buf,int count){auto s=(Input*)p;if(s->cancelled())return AVERROR_EXIT;ssize_t n;do{n=pread(s->fd,buf,count,s->offset);}while(n<0&&errno==EINTR);if(n<0)return AVERROR(errno);if(n==0)return AVERROR_EOF;s->offset+=n;return (int)n;}
  static int64_t seek(void *p,int64_t off,int whence){auto s=(Input*)p;if(whence==AVSEEK_SIZE)return s->size;whence&=~AVSEEK_FORCE;int64_t target=whence==SEEK_SET?off:whence==SEEK_CUR?s->offset+off:whence==SEEK_END&&s->size>=0?s->size+off:-1;if(target<0)return AVERROR(EINVAL);s->offset=target;return target;}
- static int interrupt(void*){return stopped.load()?1:0;}
+ static int interrupt(void *p){return ((Input*)p)->cancelled()?1:0;}
 };
 int64_t us(int64_t pts,AVRational base){return pts==AV_NOPTS_VALUE?AV_NOPTS_VALUE:av_rescale_q(pts,base,AV_TIME_BASE_Q);}
 int select(AVFormatContext *f,AVMediaType type,int requested){
@@ -64,14 +66,14 @@ Plan analyze(Input &input,int vi,int ai,int si,int64_t a,int64_t b){
  auto packet=av_packet_alloc();if(!packet)throw std::runtime_error("内存不足");
  // Analyze on a worker; no approximate 'key-frame' flag is taken as proof of an IDR.
  int rc=0;while((rc=av_read_frame(f,packet))>=0){
-  if(stopped.load()){av_packet_free(&packet);throw std::runtime_error("已取消");}
+  if(input.cancelled()){av_packet_free(&packet);throw std::runtime_error("已取消");}
   if(packet->stream_index==p.video){int64_t t=us(packet->pts,f->streams[p.video]->time_base);
    if(t!=AV_NOPTS_VALUE){fraction.store(std::min(.99,double(std::max<int64_t>(0,t-p.origin))/b));
     if(idr(packet,par)){if(t<=p.origin+a)p.start=t;else if(t>=p.origin+b){p.end=t;av_packet_unref(packet);break;}}
    }
   };av_packet_unref(packet);
  }
- av_packet_free(&packet);if(stopped.load())throw std::runtime_error("已取消");if(rc<0&&rc!=AVERROR_EOF)fail(rc,"读取源视频");
+ av_packet_free(&packet);if(input.cancelled())throw std::runtime_error("已取消");if(rc<0&&rc!=AVERROR_EOF)fail(rc,"读取源视频");
  if(p.start==AV_NOPTS_VALUE)throw std::runtime_error("找不到可证明独立解码的 IDR 起点，请使用精确导出");
  if(p.end<=p.start)throw std::runtime_error("有效片段过短");
  for(unsigned i=0;i<f->nb_streams;i++)if((int)i!=p.video&&(int)i!=p.audio&&(int)i!=p.sub){if(!p.dropped.empty())p.dropped+=", ";p.dropped+=std::to_string(i)+" ("+av_get_media_type_string(f->streams[i]->codecpar->codec_type)+")";}
@@ -92,7 +94,7 @@ std::string writeCopy(Input &input,int vi,int ai,int si,int64_t start,int64_t en
   fail(avformat_seek_file(f,-1,INT64_MIN,start,start,AVSEEK_FLAG_BACKWARD),"定位起点");
   pkt=av_packet_alloc();bool begun=false;int rc;
   while((rc=av_read_frame(f,pkt))>=0){
-   if(stopped.load())throw std::runtime_error("已取消");int i=pkt->stream_index;int64_t t=us(pkt->pts,f->streams[i]->time_base);
+   if(input.cancelled())throw std::runtime_error("已取消");int i=pkt->stream_index;int64_t t=us(pkt->pts,f->streams[i]->time_base);
    if(t==AV_NOPTS_VALUE)t=us(pkt->dts,f->streams[i]->time_base);
    if(i==video&&!begun){if(t==start&&idr(pkt,f->streams[i]->codecpar))begun=true;else if(t>start+1000000)throw std::runtime_error("实际随机访问点与确认区间不符");}
    if(t!=AV_NOPTS_VALUE&&t>end+2000000){av_packet_unref(pkt);break;}
@@ -110,7 +112,9 @@ std::string writeCopy(Input &input,int vi,int ai,int si,int64_t start,int64_t en
 std::string get(JNIEnv *e,jstring s){const char *p=e->GetStringUTFChars(s,nullptr);std::string out=p;e->ReleaseStringUTFChars(s,p);return out;}
 jstring error(JNIEnv *e,const std::exception &x){return e->NewStringUTF(("{\"error\":"+quote(x.what())+"}").c_str());}
 }
-extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_analyze(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b){stopped=false;fraction=0;try{Input input(fd);return e->NewStringUTF(planJSON(analyze(input,vi,ai,si,a,b)).c_str());}catch(const std::exception &x){return error(e,x);}}
-extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_write(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b,jstring path,jstring container){stopped=false;fraction=0;try{Input input(fd);return e->NewStringUTF(writeCopy(input,vi,ai,si,a,b,get(e,path),get(e,container)).c_str());}catch(const std::exception &x){return error(e,x);}}
-extern "C" JNIEXPORT void JNICALL Java_org_lumaview_mobile_export_NativeExporter_cancel(JNIEnv*,jobject){stopped=true;}
+extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_analyze(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b,jlong token){fraction=0;try{Input input(fd,token);return e->NewStringUTF(planJSON(analyze(input,vi,ai,si,a,b)).c_str());}catch(const std::exception &x){return error(e,x);}}
+extern "C" JNIEXPORT jstring JNICALL Java_org_lumaview_mobile_export_NativeExporter_write(JNIEnv *e,jobject,jint fd,jint vi,jint ai,jint si,jlong a,jlong b,jstring path,jstring container,jlong token){fraction=0;try{Input input(fd,token);return e->NewStringUTF(writeCopy(input,vi,ai,si,a,b,get(e,path),get(e,container)).c_str());}catch(const std::exception &x){return error(e,x);}}
+extern "C" JNIEXPORT void JNICALL Java_org_lumaview_mobile_export_NativeExporter_cancel(JNIEnv*,jobject){++generation;}
 extern "C" JNIEXPORT jdouble JNICALL Java_org_lumaview_mobile_export_NativeExporter_progress(JNIEnv*,jobject){return fraction.load();}
+
+extern "C" JNIEXPORT jlong JNICALL Java_org_lumaview_mobile_export_NativeExporter_begin(JNIEnv*,jobject){return ++generation;}

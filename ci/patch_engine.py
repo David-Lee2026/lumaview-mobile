@@ -70,7 +70,7 @@ change('video/out/gpu/video.c','#include "video.h"','#include "video.h"\n#includ
 change('video/out/gpu/video.c','    struct gl_lcms *cms;',r'''    struct gl_lcms *cms;
     struct lvm_frame_v1 lvm;
     struct ra_tex *lvm_history;
-    bool lvm_history_valid, lvm_reset, lvm_hdr, lvm_applied;
+    bool lvm_history_valid, lvm_reset, lvm_hdr, lvm_applied, lvm_over_budget;
     double lvm_pts;
     float lvm_dt, lvm_roi_lo[2], lvm_roi_hi[2];
     int lvm_work_w, lvm_work_h;
@@ -145,7 +145,9 @@ change('video/out/gpu/video.c','    pass_opt_hook_point(p, "MAIN", &p->texture_o
         }
         if(!p->lvm_history_valid)p->lvm_reset=true;
     }
-    pass_opt_hook_point(p, "MAIN", &p->texture_offset);
+    p->lvm_over_budget=(uint64_t)p->texture_w*p->texture_h>2073600;
+    if(p->lvm.mode>0 && !(p->lvm.flags&1) && !p->lvm_hdr && !p->lvm_over_budget)
+        pass_opt_hook_point(p, "MAIN", &p->texture_offset);
     p->lvm_reset=false;''')
 change('video/out/gpu/video.c','    gl_video_update_options(p);\n\n    struct mp_rect target_rc',r'''    gl_video_update_options(p);
     if(p->global->lvm) {
@@ -173,7 +175,7 @@ if 'lvm_receipt_v1 result=' not in part:
           .pts_us=frame->current->pts==MP_NOPTS_VALUE?0:llrint(frame->current->pts*1e6),
           .valid=1,
           .effective_mode=((p->lvm.flags&1)||p->lvm_hdr||!p->lvm_applied||p->broken_frame)?0:p->lvm.mode,
-          .reason=p->lvm_hdr?1:(p->broken_frame||gl_sc_error_state(p->sc)||!p->lvm_applied?2:0),
+          .reason=p->lvm_hdr?1:(p->lvm_over_budget?3:((p->lvm.mode==0||(p->lvm.flags&1))?0:(p->broken_frame||gl_sc_error_state(p->sc)||!p->lvm_applied?2:0))),
           .lock_applied=(p->lvm.flags&2)&&p->lvm_history_valid,
           .actual_rect={p->src_rect.x0,p->src_rect.y0,p->src_rect.x1,p->src_rect.y1},
           .resource_bytes=0, /* unavailable: not a measured allocator counter */

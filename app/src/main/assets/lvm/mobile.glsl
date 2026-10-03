@@ -53,8 +53,9 @@ vec4 hook(){
  if(lvm_reset<0.5&&!cut){
   float amount=1.0-exp(-max(lvm_dt,0.0)/0.4);
   ev=previous+clamp((target-previous)*amount,-lvm_dt,lvm_dt);
-  if(lvm_lock>0.5)ev=previous;
+
  }
+ if(lvm_lock>0.5&&lvm_reset<0.5)ev=previous;
  return vec4(pack16(ev/4.0),pack16(mean));
 }
 

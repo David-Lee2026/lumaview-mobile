@@ -23,7 +23,7 @@ object OutputTransaction {
    FileInputStream(temp).use{input->ParcelFileDescriptor.AutoCloseOutputStream(p).use{output->
     val buf=ByteArray(256*1024);var bytes=0L
     while(true){check(!stop.get()){ "已取消保存" };val n=input.read(buf);if(n<0)break;output.write(buf,0,n);bytes+=n;progress(bytes.toDouble()/temp.length().coerceAtLeast(1))}
-    output.flush();try{output.fd.sync()}catch(_:Exception){}
+    output.flush();output.fd.sync()
    }}
   }catch(e:Exception){
    if(safeToRemove){val deleted=try{DocumentsContract.deleteDocument(resolver,destination)}catch(_:Exception){false};if(!deleted)throw IOException("保存未完成，无法清理新建半成品：$destination",e)}

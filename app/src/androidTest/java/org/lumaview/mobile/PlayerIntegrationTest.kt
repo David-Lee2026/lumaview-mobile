@@ -68,8 +68,8 @@ class PlayerIntegrationTest {
    val selected=value("clipRange") as ClipRange;assertTrue(selected.startUs>1_000_000);assertTrue(selected.endUs-selected.startUs>3_000_000)
    // Native data path tests consume the actual UI-selected range, not invented parameters.
    val fd=android.os.ParcelFileDescriptor.open(input,android.os.ParcelFileDescriptor.MODE_READ_ONLY)
-   val plan=JSONObject(NativeExporter.analyze(fd.fd,-1,-1,-2,selected.startUs,selected.endUs));assertFalse(plan.toString(),plan.has("error"))
-   val copy=File(evidence,"copy.mp4");val copyResult=JSONObject(NativeExporter.write(fd.fd,plan.getInt("video"),plan.getInt("audio"),-2,plan.getLong("startUs"),plan.getLong("endUs"),copy.path,"mp4"));assertFalse(copyResult.toString(),copyResult.has("error"));fd.close();assertTrue(copy.length()>0)
+   val stale=NativeExporter.begin();NativeExporter.cancel();val cancelled=JSONObject(NativeExporter.analyze(fd.fd,-1,-1,-2,selected.startUs,selected.endUs,stale));assertTrue("cancel before JNI entry must remain cancelled",cancelled.has("error"));val token=NativeExporter.begin();val plan=JSONObject(NativeExporter.analyze(fd.fd,-1,-1,-2,selected.startUs,selected.endUs,token));assertFalse(plan.toString(),plan.has("error"))
+   val copy=File(evidence,"copy.mp4");val copyResult=JSONObject(NativeExporter.write(fd.fd,plan.getInt("video"),plan.getInt("audio"),-2,plan.getLong("startUs"),plan.getLong("endUs"),copy.path,"mp4",token));assertFalse(copyResult.toString(),copyResult.has("error"));fd.close();assertTrue(copy.length()>0)
    val suspended=CountDownLatch(1);session.suspendForExport{suspended.countDown()};assertTrue(suspended.await(15,TimeUnit.SECONDS))
    val exact=File(evidence,"exact.mp4");val end=CountDownLatch(1);var exactResult:Result<String>?=null;val exporter=ExactExporter(context)
    exporter.start(Uri.fromFile(input),selected,exact,true,2_000_000,{}){r->exactResult=r;end.countDown()};assertTrue(end.await(120,TimeUnit.SECONDS));exactResult!!.getOrThrow();assertTrue(exact.length()>0)
