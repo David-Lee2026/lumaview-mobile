@@ -23,11 +23,12 @@
       ],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "APK built and static-verified; ARM64 installation and actual 16KB-page runtime not executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "partialEvidence": {
-        "workflowRun": 37141636519,
+        "workflowRun": 37150812083,
         "artifact": "LumaView-Android-arm64",
-        "buildSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "note": "Static signature/ABI/ZIP/ELF checks only; no ARM64 install/runtime test"
       },
       "fullAcceptanceExecuted": false
     },
@@ -44,7 +45,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "target_physical_device",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -62,11 +63,12 @@
       ],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "APK built and static-verified; ARM64 installation and actual 16KB-page runtime not executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "partialEvidence": {
-        "workflowRun": 37141636519,
+        "workflowRun": 37150812083,
         "artifact": "LumaView-Android-arm64",
-        "buildSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "note": "Static signature/ABI/ZIP/ELF checks only; no ARM64 install/runtime test"
       },
       "fullAcceptanceExecuted": false
     },
@@ -82,8 +84,17 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
-      "fullAcceptanceExecuted": false
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
+      }
     },
     {
       "id": "P02",
@@ -97,12 +108,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -118,7 +133,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -133,7 +148,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -149,7 +164,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -165,12 +180,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -186,12 +205,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -207,7 +230,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -223,7 +246,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -239,7 +262,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -257,7 +280,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -273,12 +296,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -294,12 +321,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -315,12 +346,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -336,8 +371,17 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
-      "fullAcceptanceExecuted": false
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
+      }
     },
     {
       "id": "E05",
@@ -351,7 +395,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -366,7 +410,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -381,8 +425,17 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
-      "fullAcceptanceExecuted": false
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
+      }
     },
     {
       "id": "E08",
@@ -396,7 +449,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -411,7 +464,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -424,7 +477,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "target_physical_device",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -439,12 +492,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -459,7 +516,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -474,12 +531,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -494,7 +555,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -509,12 +570,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -530,7 +595,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -546,7 +611,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -561,7 +626,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -576,12 +641,16 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false,
       "partialEvidence": {
-        "workflowRun": 37141636519,
-        "environment": "Android API 35 x86_64 emulator",
-        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
       }
     },
     {
@@ -596,7 +665,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -612,8 +681,17 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
-      "fullAcceptanceExecuted": false
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
+      }
     },
     {
       "id": "F01",
@@ -625,7 +703,7 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "target_physical_device",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     },
     {
@@ -641,8 +719,17 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
-      "fullAcceptanceExecuted": false
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37150812083,
+        "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+        "environment": [
+          "Android API29 x86_64 emulator",
+          "Android API35 x86_64 emulator"
+        ],
+        "note": "6 bounded actual instrumentation tests per API; full criterion not executed"
+      }
     },
     {
       "id": "F03",
@@ -660,11 +747,11 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed",
+      "reason": "Full criterion has not been executed in the required environment; current bounded evidence does not establish full acceptance",
       "fullAcceptanceExecuted": false
     }
   ],
   "kind": "mobile-acceptance-current-status",
-  "updatedAt": "2026-10-03T18:00:26.212730+00:00",
-  "buildSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+  "updatedAt": "2026-10-03T20:26:41.490157+00:00",
+  "buildSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
 }

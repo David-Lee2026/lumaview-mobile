@@ -2,17 +2,19 @@
 
 Android 本地视频播放器，恢复自固定版本 mpv-android，提供可见播放控制、暂停与倍速状态、触控／鼠标 ROI 框选放大、可见区域 GPU 低光增强，以及 A/B 片段导出。
 
-开发分支：`implementation/android-20261003`。包名 `org.lumaview.mobile`，最低 API 23，目标／编译 API 36，ARM64 与 x86_64 分包，测试版本 `0.1.0-test`。不合并到 main。
+开发分支：`implementation/android-20261003`。包名 `org.lumaview.mobile`，最低 API 23，目标／编译 API 36，ARM64 与 x86_64 分包，测试版本 `0.1.1-test`。不合并到 main。
 
 ## 构建和下载
 
-已验证构建：[run 37141636519](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519)，源码提交 `44a98548fac22c66c99420cbe3cedfc5c1e0ede8`。下载 [ARM64 APK 与校验／构建日志 ZIP](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519/artifacts/11280692833) 或 [x86_64 集成验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519/artifacts/11280707897)。GitHub artifact 下载需登录，保留至 2026-11-02（UTC）。
+黑屏／进度修复构建：[run 37150812083](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083)，源码提交 `af313c43423057eb381b5ec39e26bddb436621ba`。下载 [ARM64 APK 与校验／构建日志 ZIP](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284067796)、[API 29 验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284490899)、[API 35 验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284396232)。GitHub artifact 下载需登录，保留 30 天。
 
-ARM64 APK SHA256：`67c6bab43251b296895d8865de0c43219da9e36098cbea98bcaa4721690ae197`。两 ABI 各 9 项单测通过；API 35 x86_64 模拟器 2 项真实播放／ROI／导出集成测试和主机导出校验通过。华为真机与完整 38 项严格验收场景仍未执行。
+ARM64 APK SHA256：`2b4885f9e818221626d0fa8c188ac104f4f70708185330e0d13fb9fa66d28d9f`。三个构建各 13 项单测通过；API 29 / 35 x86_64 模拟器各 6 项真实屏幕／播放／ROI／导出集成测试和主机导出校验通过。华为真机与完整 38 项严格验收场景仍未执行。
+
+默认使用软件解码，避免零复制硬件纹理路径；可从“解码设置”选择硬件复制解码。视频恢复官方 SurfaceView 显示路径，播放器控件采用软件 Canvas 绘制；固定请求 GLES 3，shader 故障逐级回退到兼容增强或原画，并明确显示状态。暂停曝光调整立即更新画面；缺失位置样本保留有效进度，连续播放以独立 UI 时钟平滑更新。具体调查和失败记录见 [黑屏调查](docs/implementation/black-screen-investigation.md)。
 
 [APK 与集成验证 workflow](https://github.com/David-Lee2026/lumaview-mobile/actions/workflows/mobile-release.yml) 复用成功 run `37127934301` 的 `native-arm64`、`native-x86_64`。仅为固定 FFmpeg 增加 MP4 muxer，并重编译带 LumaView 扩展的固定 mpv 与 JNI；其他原生依赖复用现有产物。
 
-成功 run 的 `LumaView-Android-arm64` 包含可直接安装的 ARM64 APK、`SHA256SUMS.txt`、依赖锁定、构建日志、签名／包信息／ZIP 与 ELF 对齐检查、单元测试结果。`LumaView-Android-x86_64` 另含 Android API 35 模拟器的真实触控测试、原画／增强／ROI 截图、导出媒体、编码器摘要和完整解码／压缩包负载检查。`LumaView-readable-source` 固定同一源码提交；构建不会跟随移动中的分支 head。
+成功 run 的 `LumaView-Android-arm64` 包含可直接安装的 ARM64 APK、`SHA256SUMS.txt`、依赖锁定、构建日志、签名／包信息／ZIP 与 ELF 对齐检查、单元测试结果。`LumaView-Android-x86_64-API29` 与 `LumaView-Android-x86_64-API35` 分别包含对应模拟器的真实触控／系统窗口截图、故障恢复、进度、ROI、导出媒体、编码器摘要和完整解码／压缩包负载检查。x86_64 APK 单独保存在 `LumaView-APK-x86_64-API29` / `API35`。`LumaView-readable-source` 固定同一源码提交；构建不会跟随移动中的分支 head。
 
 ## 功能和当前限制
 

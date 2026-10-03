@@ -80,7 +80,9 @@
       "wiring": "先建立只测原始播放内核的 baseline 入口与测试探针；随后主入口由 T02／T06 接替。原生库未构建时不给出空壳 APK。构建脚本默认不安装／删除用户软件；首次安装只对指定测试设备执行。 建立ScenarioRunner与run_case的证据校验负例；同时创建generate_fixtures.py/fixtures.json的最小有声、无声H.264集合。后续任务在首次需要时追加自己的素材，不能等T18才生成前置测试素材。测试APK只安装到明确选择的测试设备。",
       "exit_gate": "干净工作区可重复构建；安装／加载／4KB与16KB静态检查分别留证。没有 ARM64 设备时安装子项 BLOCKED，不把编译等同安装。",
       "risk": "本轮不创建应用工程。T01 执行时，源码下载失败、缺工具链或依赖校验失败就停止该任务，不降级为来源未知的二进制。",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T02",
@@ -149,7 +151,9 @@
       "wiring": "文件与文件夹授权页只消费异步列表；不猜真实路径、不在主线程递归扫描。最近播放只存私有目录；断点由后续 PlayerSession 的真实位置写入。对提供方报告的远程文档显示来源；无法判断时标为来源未知。 用仅测试包可注册的FaultDocumentsProvider模拟撤权、未知长度和读取失败；不篡改用户提供方或真实媒体。",
       "exit_gate": "中文名、空格、只读文件、撤销权限、移动／删除、不可寻址 FD、未知长度均有可读结果；常规本地文件打开不整段复制。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T03",
@@ -215,7 +219,9 @@
       "wiring": "以 SurfaceCoordinator 替换旧 Surface 回调的无屏障释放：回调首先禁止新帧提交；native 保持有所有权的窗口引用；渲染线程处理失效并发回 detach 回执后释放。处理 EGL_BAD_SURFACE／上下文丢失；UI 不等待完整解码或 GPU 回读。超时转可读错误并关闭会话，不能 sleep 固定时间后强释放仍在使用的对象。",
       "exit_gate": "常见 H.264／HEVC、有声／无声实际播放；30 次切文件／后台／旋转重建无旧状态污染、无新增未回收对象。每次记录实际解码器，不以“请求硬解”推断硬解成功。",
       "risk": "上游 BaseMPVView 有释放竞态提醒；T03 是原生增强的前置阻断任务。[R3]",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T04",
@@ -276,7 +282,9 @@
       "wiring": "屏幕显示与统计都消费同一 ViewportSnapshot／viewRevision；仅视口模块能产生裁剪。放大限制 1–8 倍，平移夹紧；全画面恢复保留容器正常裁剪。原生最终取整后的区域经回执反映到界面。",
       "exit_gate": "固定目标网格在四个旋转、横竖屏、非方形像素、内置裁剪与黑边下回指同一目标；记录取整前后范围，≤1 源像素数学误差不等于视频变得更清晰。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T05",
@@ -326,7 +334,9 @@
       "wiring": "过小选框保持待选；多指中断、ACTION_CANCEL、窗口失焦、安全返回统一取消。锁定时只开放解锁热区。拖进度与调音量的同一输入序列不能同时传给框选模块。",
       "exit_gate": "用包含第二指加入／第一指离开／取消的原始触控序列回放；只验证路由状态，不假称完成 T11 的真实选择界面验收。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T06",
@@ -397,7 +407,9 @@
       "wiring": "时间未知／不可寻址禁用拖动；150ms 合并预览，最终 seek 呈现回执到达才恢复状态。合成实际PTS而非固定FPS假定。3秒自动隐藏只用于普通播放；暂停、剪辑、选框、错误及面板期间常显。轨道列表用真实 ID；继承外挂字幕需独立 SAF 授权。适配系统返回、触控锁定与系统栏 inset，不沿用上游默认网络打开入口。",
       "exit_gate": "真实手势拖动、慢速、静音恢复及横竖屏截图通过；扬声器听音单列 T19，模拟器属性变化不算听音。M1 仅形成基础播放测试包，画面增强仍标未实现。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T07",
@@ -492,7 +504,9 @@
       "wiring": "同一渲染边界应用视口与增强快照；以最终可见源矩形取样，不能UI独立设置video-crop再另送统计区域。复用上游纹理管理和状态缓存，不用未知 raw GL 调用破坏状态。所有变体预编译；paused 时请求重绘。主路径失败显示旁路原因，不能改成 mediacodec_embed 仍称增强已生效。",
       "exit_gate": "恒等阶段在设备上显示真实视频、更新已生效回执；变更选区不会重启解码器。未打通不能进入“弱光功能完成”声明。",
       "risk": "固定 GPU 源文件的完整代码本轮未成功取得；插入函数与 patch context 需在此任务只读核对后定案。目标文件和所需语义已定，不伪造行号或已有扩展符号。glsl-shader-opts 不用于 vo=gpu。[R4]",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T08",
@@ -570,7 +584,9 @@
       "wiring": "时间平滑使用实测视频时间差和0.4秒时间常数、同场景1EV/秒限速；镜头突变按分布与连续性判断，清除历史并0.15秒过渡。重复呈现同一PTS不推进历史；seek／文件／Surface／颜色／视口提交变更清历史。所有浮点格式做真实FBO测试，不凭扩展名称判断。",
       "exit_gate": "E02 必须和 E03 成对通过；E08 两种格式各有数值参考和GPU输出，无浮点支持的设备只能报告受测后备，不虚报另一分支。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T09",
@@ -643,7 +659,9 @@
       "wiring": "流畅档跳过邻域降噪和细节仍保留ROI统计提亮。工作纹理最长边≤1920，同时像素数≤1920×1080；竖屏交换长宽，方形等比限面积，保证预算不被方形素材绕过。RGBA8存储用已声明编码空间，不把暗部线性值直接8位截断；浮点路径预算单独计数。",
       "exit_gate": "同帧灰阶、肤色、细线和噪声块联合验证，不能只因平均亮度上升而判通过。冻结可复现实验参数，真实微光画质还需T19。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T10",
@@ -696,7 +714,9 @@
       "wiring": "对比只旁路像素增强，不改变视口与播放位置；HDR按输入PQ／HLG或HDR元数据检测，不能因内核已转换SDR而误认源SDR。改变选区／媒体／颜色路径解除曝光锁定并提示；过热可减降噪，不偷改锁定曝光。首次加载失败、历史无有效回执或不支持效果时禁用对应控件。",
       "exit_gate": "真实触控调整面板后像素或回执随之改变；HDR对比和锁定不篡改当前区域。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T11",
@@ -754,7 +774,9 @@
       "wiring": "手指操作通过统一逆矩阵更新快照；pinch焦点固定源像素，平移不调用快进或亮度音量逻辑。最终ROI取原始解码纹理，不先对全图降采样再裁剪。缩放连续更新统计域而不重编译shader，合并过时快照；旋转清手工选区、保留源方向含义。",
       "exit_gate": "完成设备触控视频与同PTS像素记录；M2首个核心测试包必须真实具备“局部放大＋按局部增强”，不是只包含选框UI。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T12",
@@ -809,7 +831,9 @@
       "wiring": "GPU计时缺失、热接口缺失都用null／不可用。实际呈现无法可靠测量则F01对应指标标未测，不用UI刷新率充当视频帧率。计数器回绕／重置开始新窗口，不出现负掉帧。增强资源上限RGBA8约32MiB／浮点64MiB，统计、FBO和池也计入；不含解码器和系统总内存。",
       "exit_gate": "策略模拟与设备真实负载分开留证；降级不改变视口／播放／音量；锁定曝光保持，稳定恢复只一级且不超过用户请求档。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T13",
@@ -877,7 +901,9 @@
       "wiring": "手柄拖动暂停预览并沿用150ms合并；松手记录请求时间与实际帧时间。可在当前点设A/B，循环立即跟随区间；关闭循环清内核边界。导出请求冻结媒体代次、区间与轨道，不使用未来UI状态。",
       "exit_gate": "实际触控拖动、键盘输入、短区间、长视频与VFR均检查；仅此任务完成还不能宣称导出可用。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T14",
@@ -952,7 +978,9 @@
       "wiring": "CopyPlan回报请求A、实际A′、B、前滚、选中流及不支持项；同容器优先并分别声明容器支持。使用共同时间基准平移PTS/DTS；末尾保留解码依赖，记录实际区间。JPEG封面/附件不混作视频轨。完整解码及负载哈希在测试验证器中运行，不能用重新编码保持码率假冒复制。 写入API显式接收本任务独立ReadLease，CopyPlan不隐藏FD或依赖分析器继续存活；write拥有该lease直到完成或取消，分析阶段仅借用、不会关闭它。",
       "exit_gate": "H.264和HEVC同容器逐包核对；跨容器转换另报码流表示转换，不能套用原始字节一致结论。生产导出不要求逐包hash导致UI或导出额外全片阻塞。",
       "risk": "文件fd seek共享、错误把mpv轨道ID当FFmpeg索引、开放GOP假关键帧，均作为本任务负例；T07中的C/C++链接与本桥接应共用同一FFmpeg构建，避免双份符号。",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T15",
@@ -1020,7 +1048,9 @@
       "wiring": "单一合适视频／音轨直接输入；多轨且不能验证Transformer选中映射时，先经FFmpeg只暂存所选流并记录统一时间偏移，不让它默认选错轨。该暂存成本在确认页显示，并征求空间／耗时同意；这不是每次播放默认复制全片。使用同一Looper管理Transformer，后台工作不让UI转码；开始前释放／暂停预览的硬解资源，完成才重新获取。",
       "exit_gate": "用帧号与PTS标签验证首末实际画面，不仅检查容器时长。SDR、无声、两音轨、非零起始PTS、VFR分别通过；HDR／编码能力不足明确拒绝或用户确认后降分辨率，不静默降画质。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "LIMITED_IMPLEMENTATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "SDR single-video/single-audio forced reencode; explicit multi-track refusal"
     },
     {
       "id": "T16",
@@ -1079,7 +1109,9 @@
       "wiring": "取消既覆盖转码也覆盖外部复制；只删除本任务创建的暂存及半成品，失败给出残留URI。断电／强停不能执行取消回调，重启扫描私有任务日志并展示中断状态。首测试版退后台安全取消，选择器／本应用确认页不视为用户离开；不承诺后台不中断。所有出口恢复可再导出的状态。",
       "exit_gate": "磁盘不足、撤权、外置存储断开、提供方新URI别名、重复输出、写失败后重试都不破坏源文件；触控选择的区间通过两条导出路径真正保存。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T17",
@@ -1141,7 +1173,9 @@
       "wiring": "诊断默认脱敏文件名、URI、路径与序列号，保留API、ABI、GPU、输入色彩和生效状态。去除INTERNET及摄像头、麦克风、所有文件访问、无障碍、悬浮权限；控制Intent协议与长度，只接受授权媒体URI，不接受额外mpv命令。禁止目录auto-load脚本和远程协议；系统提供方自有行为与应用自动请求分开记录。",
       "exit_gate": "无网络／无Google登录核心流程可执行；权限静态检查与动态网络观察分别有记录，不把截图背光变化作为像素增强证据。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T18",
@@ -1249,7 +1283,9 @@
       "wiring": "像素分析按同PTS同视图、同色彩空间对齐；掉帧和时域统计读真实回执。每次记录APK／补丁／素材hash、设备环境、raw数据和计算脚本；错误和不利结果保留。无设备用BLOCKED，不通过跳过设备测试获得全绿报告。 原始素材生成、像素分析与包验证脚本在T01/T08/T09/T14已分别落地，本任务补齐端到端调度和缺失覆盖，不引入前向测试依赖。",
       "exit_gate": "形成“已验证功能／失败／未跑／受阻”四分表。模拟器ARM64、x86_64和物理ARM64结果分开；本任务不替代Mate 20 X长测及真实微光评估。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_PARTIAL_VALIDATION",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Implementation present; bounded CI checks available, full scenario matrix not executed"
     },
     {
       "id": "T19",
@@ -1302,7 +1338,9 @@
       "wiring": "四类真实素材为室内暗光、路灯高反差、人物运动、细文字；固定相同PTS对照并人工观察噪声、细节、光晕、颜色。没有配对真值不得算真实画面PSNR。GPU计时可靠时单报增强P50/P95，P95≤8ms为调校目标，否则null。1080p60和4K另列能力实验，不改变首验口径。",
       "exit_gate": "目标机不在可用环境时本任务BLOCKED并提供用户本地执行说明，绝不声称远程访问了用户手机。听音、真实素材和长测分别签认；未达标明确不通过，不靠隐藏自动降级掩盖请求档未达标。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "NOT_RUN",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "No Huawei Mate 20 X / HarmonyOS 4.0 physical device connected"
     },
     {
       "id": "T20",
@@ -1356,9 +1394,11 @@
       "wiring": "首测试版versionName `0.1.0-test`，独立递增versionCode；测试签名证书摘要公开、私钥受保护且不进源码。保留上游许可、全部新增／修改源文件、原生patch和依赖锁，不交只有壳的“完整源码”。只把真实产物的字节hash写清单，更新说明不得从本计划复制通过结论。",
       "exit_gate": "交付APK、源码、构建方式、中文说明和逐项验证。T19受阻时仅可创建“未完成目标真机验收”的测试包，不能叫最终兼容认证版；这是一条显式受限发布路径，不把T19标完成。",
       "risk": "",
-      "status": "NOT_STARTED"
+      "status": "TEST_BUILD",
+      "executionRecord": "audit/execution-status.json",
+      "validationReason": "Debug signed APK; no stable production signing or main merge; target physical validation pending"
     }
   ],
-  "implementationSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8",
+  "implementationSourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
   "executionStatus": "audit/execution-status.json"
 }

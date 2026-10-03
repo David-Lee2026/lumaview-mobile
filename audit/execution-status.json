@@ -1,38 +1,38 @@
 {
-  "schemaVersion": 2,
-  "checkpoint": "Android-test-build-20261003",
-  "updatedAt": "2026-10-03T18:00:26.212730+00:00",
-  "scope": "Restored Android application; ARM64 static build checks and API35 x86_64 emulator only",
-  "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8",
+  "schemaVersion": 3,
+  "checkpoint": "Android-black-screen-progress-repair-0.1.1",
+  "updatedAt": "2026-10-03T20:26:41.490157+00:00",
+  "scope": "ARM64 static build checks; API29 and API35 x86_64 actual-window emulator tests",
+  "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
   "apk": {
-    "version": "0.1.0-test",
+    "version": "0.1.1-test",
     "abi": "arm64-v8a",
-    "apkSha256": "67c6bab43251b296895d8865de0c43219da9e36098cbea98bcaa4721690ae197",
-    "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8",
+    "apkSha256": "2b4885f9e818221626d0fa8c188ac104f4f70708185330e0d13fb9fa66d28d9f",
+    "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
     "elf": [
       {
         "name": "lib/arm64-v8a/libavcodec.so",
-        "sha256": "a31ae4bf2fc63dbdbb79136f1d06fff731372fedc022016e86add11f26c32bb0",
+        "sha256": "4448cb43c54ea78a75d618f7b79903b4f76841a597ad259dc154a3cb58127dee",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavdevice.so",
-        "sha256": "6c8ad6bfe232d4d17a1176981cbd133a95795ea1c3433fa55ab93bb047983fa4",
+        "sha256": "b003a4b1ab4ac80beed7fd4f8113b7ce1224547e6de6fc9910033651583dfd6f",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavfilter.so",
-        "sha256": "95c7b1c49a8e2e8bf5767562af653e3476e279dd41e1acb9438d9e2d6aa0ceb6",
+        "sha256": "10629aca99b4e8aa17603e76cd1fe825e34cdb24ca4674e3e8a87f1680d81344",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavformat.so",
-        "sha256": "fccd66bf90f1cc11954a3d03fa7b2ffc2cbf85ec1fbbb119548f52f56bf94650",
+        "sha256": "7aff96e76000b72f92d1f38256d561564def3a3d1cc2e660e05e7632b7217006",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavutil.so",
-        "sha256": "a740bb4557b40b417f170f6af80b32b2f041af02d6230d5b0304387040043aec",
+        "sha256": "50f178aaf08757c6b966568a096d97fba49c0295e836dd05940e60441dc03f77",
         "loadAlignment16K": true
       },
       {
@@ -42,7 +42,7 @@
       },
       {
         "name": "lib/arm64-v8a/libmpv.so",
-        "sha256": "333e8411b5227324a19fff982df2e78a8ca138749c5a6fc80e769d462e3d825a",
+        "sha256": "971904bc9a95eab14f9d5076cb0dfdb535a770f91f054a3d8dbb9c9a2e874bbb",
         "loadAlignment16K": true
       },
       {
@@ -52,7 +52,7 @@
       },
       {
         "name": "lib/arm64-v8a/libswresample.so",
-        "sha256": "27d3f93ed63f3b2b061b8125cf6c3f6ac527430408760191906c1fcd75cb6786",
+        "sha256": "487bcfd2c66275bca93ac41ba9afbdcb124c29ab2bbb8067ec759143d5a3cba8",
         "loadAlignment16K": true
       },
       {
@@ -64,214 +64,660 @@
     "targetPhysicalDeviceTest": "NOT_RUN",
     "standaloneFontsIncluded": false
   },
-  "workflowRun": 37141636519,
-  "unitWorkflowRun": 37141636519,
-  "unitTestEvidence": {
-    "testsPerAbi": 9,
-    "failures": 0,
-    "errors": 0,
-    "abis": [
-      "arm64-v8a",
-      "x86_64"
-    ]
-  },
+  "workflowRun": 37150812083,
+  "unitWorkflowRun": 37150812072,
+  "unitTestEvidence": [
+    {
+      "artifactDirectory": "arm64",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "artifactDirectory": "API29",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "artifactDirectory": "API35",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
   "remoteWrites": true,
   "remoteBuilds": true,
-  "tests": {
-    "sourceFixtureSha256": "9f68a1c1d7ffe47a07b215f169619bfc010b010cd5b9ace9dad6554a958f3cbe",
-    "copy": {
-      "fullyDecoded": true,
-      "durationSeconds": 8.0078,
-      "streams": [
-        {
-          "codec_name": "h264",
-          "codec_type": "video",
-          "width": 640,
-          "height": 360,
-          "sample_rate": null
+  "tests": [
+    {
+      "api": 29,
+      "instrumentation": {
+        "environment": "Android API 29 x86_64 emulator",
+        "physicalDevice": false,
+        "executedTests": 6,
+        "failures": 0,
+        "tests": [
+          "highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement",
+          "decoderSwitchesAndExposureSettingsReachTheDisplayedWindow",
+          "roiStatisticsIgnoreOutsideBrightnessAndRespondInside",
+          "progressDoesNotJumpToZeroForMissingPositionSample",
+          "realTouchRenderingAndExports",
+          "rendererFailureRecoversVisibleVideo"
+        ],
+        "runnerOutputSha256": "9d09f573f23172554c0e64c7c1a4305deaebaddc1fd79e8bcfcde57059462a7b"
+      },
+      "results": {
+        "sourceFixtureSha256": "9f68a1c1d7ffe47a07b215f169619bfc010b010cd5b9ace9dad6554a958f3cbe",
+        "copy": {
+          "fullyDecoded": true,
+          "durationSeconds": 8.0078,
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 640,
+              "height": 360,
+              "sample_rate": null
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio",
+              "width": null,
+              "height": null,
+              "sample_rate": "44100"
+            }
+          ],
+          "videoPayloadsUnchanged": true,
+          "audioPayloadsUnchanged": true
         },
-        {
-          "codec_name": "aac",
-          "codec_type": "audio",
-          "width": null,
-          "height": null,
-          "sample_rate": "44100"
-        }
-      ],
-      "videoPayloadsUnchanged": true,
-      "audioPayloadsUnchanged": true
-    },
-    "exact": {
-      "fullyDecoded": true,
-      "durationSeconds": 6.0,
-      "streams": [
-        {
-          "codec_name": "aac",
-          "codec_type": "audio",
-          "width": null,
-          "height": null,
-          "sample_rate": "44100"
+        "exact": {
+          "fullyDecoded": true,
+          "durationSeconds": 6.037188,
+          "streams": [
+            {
+              "codec_name": "aac",
+              "codec_type": "audio",
+              "width": null,
+              "height": null,
+              "sample_rate": "44100"
+            },
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 640,
+              "height": 360,
+              "sample_rate": null
+            }
+          ]
         },
-        {
-          "codec_name": "h264",
-          "codec_type": "video",
-          "width": 640,
-          "height": 360,
-          "sample_rate": null
-        }
-      ]
+        "roi": {
+          "outsideOutputVariation": 0,
+          "brightOutputRatio": 1.0401551638851414,
+          "darkOutputRatio": 1.6242480990161792,
+          "outsideIndependence": true,
+          "insideResponse": true,
+          "physicalDevice": false
+        },
+        "DISPLAY_RESULT": {
+          "api": 29,
+          "softwareLuma": 42.04104259352882,
+          "hardwareCopyLuma": 42.07332895326731,
+          "hardwareCopyAvailable": false,
+          "hardwareSelectionUsedSoftwareFallback": true,
+          "beforeExposureLuma": 42.07332895326731,
+          "afterExposureLuma": 47.852366840116815,
+          "returnedLuma": 47.852366840116815,
+          "surfaceRecreated": true,
+          "settingsVisible": true,
+          "physicalDevice": false
+        },
+        "RECOVERY_RESULT": {
+          "displayedBefore": 42.03739324916,
+          "displayedAfter": 41.96070449830824,
+          "displayedOriginalAfterSecondFault": 23.25160753172026,
+          "recovered": true,
+          "originalFallbackVisible": true,
+          "physicalDevice": false
+        },
+        "PROGRESS_RESULT": {
+          "missingSampleKeptPosition": true,
+          "samples": [
+            {
+              "progress": 2707,
+              "top": 620
+            },
+            {
+              "progress": 2751,
+              "top": 620
+            },
+            {
+              "progress": 2793,
+              "top": 620
+            },
+            {
+              "progress": 2837,
+              "top": 620
+            },
+            {
+              "progress": 2932,
+              "top": 620
+            },
+            {
+              "progress": 2980,
+              "top": 620
+            },
+            {
+              "progress": 3021,
+              "top": 620
+            },
+            {
+              "progress": 3139,
+              "top": 620
+            },
+            {
+              "progress": 3148,
+              "top": 620
+            },
+            {
+              "progress": 3202,
+              "top": 620
+            },
+            {
+              "progress": 3246,
+              "top": 620
+            },
+            {
+              "progress": 3377,
+              "top": 620
+            },
+            {
+              "progress": 3424,
+              "top": 620
+            },
+            {
+              "progress": 3470,
+              "top": 620
+            },
+            {
+              "progress": 3563,
+              "top": 620
+            },
+            {
+              "progress": 3601,
+              "top": 620
+            },
+            {
+              "progress": 3642,
+              "top": 620
+            },
+            {
+              "progress": 3685,
+              "top": 620
+            },
+            {
+              "progress": 3778,
+              "top": 620
+            },
+            {
+              "progress": 3824,
+              "top": 620
+            },
+            {
+              "progress": 3889,
+              "top": 620
+            },
+            {
+              "progress": 3933,
+              "top": 620
+            },
+            {
+              "progress": 4000,
+              "top": 620
+            },
+            {
+              "progress": 4079,
+              "top": 620
+            },
+            {
+              "progress": 4123,
+              "top": 620
+            },
+            {
+              "progress": 4185,
+              "top": 620
+            },
+            {
+              "progress": 4236,
+              "top": 620
+            },
+            {
+              "progress": 4289,
+              "top": 620
+            },
+            {
+              "progress": 4341,
+              "top": 620
+            },
+            {
+              "progress": 4384,
+              "top": 620
+            }
+          ],
+          "displayedThumbStartX": 257,
+          "displayedThumbEndX": 605,
+          "physicalDevice": false
+        },
+        "HD_RESULT": {
+          "api": 29,
+          "clips": [
+            {
+              "name": "hd-h264.mp4",
+              "width": 1920,
+              "height": 1080,
+              "decoder": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 / no",
+              "originalLuma": 21.929099751656313,
+              "enhancedLuma": 39.64172360584237
+            },
+            {
+              "name": "hd-hevc10.mp4",
+              "width": 1920,
+              "height": 1080,
+              "decoder": "H.265 / HEVC (High Efficiency Video Coding) / no",
+              "originalLuma": 21.850335125447266,
+              "enhancedLuma": 39.62871030835121
+            }
+          ],
+          "physicalDevice": false
+        },
+        "huaweiPhysicalValidation": "NOT_RUN",
+        "environment": "Android API 29 x86_64 emulator"
+      }
     },
-    "roi": {
-      "outsideOutputVariation": 0,
-      "brightOutputRatio": 1.052451317006741,
-      "darkOutputRatio": 1.6255614953732995,
-      "outsideIndependence": true,
-      "insideResponse": true,
-      "physicalDevice": false
-    },
-    "huaweiPhysicalValidation": "NOT_RUN",
-    "environment": "Android API 35 x86_64 emulator"
-  },
+    {
+      "api": 35,
+      "instrumentation": {
+        "environment": "Android API 35 x86_64 emulator",
+        "physicalDevice": false,
+        "executedTests": 6,
+        "failures": 0,
+        "tests": [
+          "highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement",
+          "decoderSwitchesAndExposureSettingsReachTheDisplayedWindow",
+          "roiStatisticsIgnoreOutsideBrightnessAndRespondInside",
+          "progressDoesNotJumpToZeroForMissingPositionSample",
+          "realTouchRenderingAndExports",
+          "rendererFailureRecoversVisibleVideo"
+        ],
+        "runnerOutputSha256": "760467849eab74c44aac14999dcccdb4afc4b89f128df1a759734e6449dded01"
+      },
+      "results": {
+        "sourceFixtureSha256": "9f68a1c1d7ffe47a07b215f169619bfc010b010cd5b9ace9dad6554a958f3cbe",
+        "copy": {
+          "fullyDecoded": true,
+          "durationSeconds": 8.0078,
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 640,
+              "height": 360,
+              "sample_rate": null
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio",
+              "width": null,
+              "height": null,
+              "sample_rate": "44100"
+            }
+          ],
+          "videoPayloadsUnchanged": true,
+          "audioPayloadsUnchanged": true
+        },
+        "exact": {
+          "fullyDecoded": true,
+          "durationSeconds": 6.0,
+          "streams": [
+            {
+              "codec_name": "aac",
+              "codec_type": "audio",
+              "width": null,
+              "height": null,
+              "sample_rate": "44100"
+            },
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 640,
+              "height": 360,
+              "sample_rate": null
+            }
+          ]
+        },
+        "roi": {
+          "outsideOutputVariation": 0,
+          "brightOutputRatio": 1.0401533648583454,
+          "darkOutputRatio": 1.6242486714563575,
+          "outsideIndependence": true,
+          "insideResponse": true,
+          "physicalDevice": false
+        },
+        "DISPLAY_RESULT": {
+          "api": 35,
+          "softwareLuma": 42.084773844862596,
+          "hardwareCopyLuma": 42.084773844862596,
+          "hardwareCopyAvailable": true,
+          "hardwareSelectionUsedSoftwareFallback": false,
+          "beforeExposureLuma": 42.084773844862596,
+          "afterExposureLuma": 47.86815505338939,
+          "returnedLuma": 47.86815505338939,
+          "surfaceRecreated": true,
+          "settingsVisible": true,
+          "physicalDevice": false
+        },
+        "RECOVERY_RESULT": {
+          "displayedBefore": 42.03440084772633,
+          "displayedAfter": 41.95737482892005,
+          "displayedOriginalAfterSecondFault": 23.24959446605631,
+          "recovered": true,
+          "originalFallbackVisible": true,
+          "physicalDevice": false
+        },
+        "PROGRESS_RESULT": {
+          "missingSampleKeptPosition": true,
+          "samples": [
+            {
+              "progress": 2881,
+              "top": 612
+            },
+            {
+              "progress": 2944,
+              "top": 612
+            },
+            {
+              "progress": 3014,
+              "top": 612
+            },
+            {
+              "progress": 3137,
+              "top": 612
+            },
+            {
+              "progress": 3203,
+              "top": 612
+            },
+            {
+              "progress": 3246,
+              "top": 612
+            },
+            {
+              "progress": 3287,
+              "top": 612
+            },
+            {
+              "progress": 3324,
+              "top": 612
+            },
+            {
+              "progress": 3365,
+              "top": 612
+            },
+            {
+              "progress": 3422,
+              "top": 612
+            },
+            {
+              "progress": 3500,
+              "top": 612
+            },
+            {
+              "progress": 3639,
+              "top": 612
+            },
+            {
+              "progress": 3707,
+              "top": 612
+            },
+            {
+              "progress": 3785,
+              "top": 612
+            },
+            {
+              "progress": 3827,
+              "top": 612
+            },
+            {
+              "progress": 3951,
+              "top": 612
+            },
+            {
+              "progress": 3989,
+              "top": 612
+            },
+            {
+              "progress": 4038,
+              "top": 612
+            },
+            {
+              "progress": 4094,
+              "top": 612
+            },
+            {
+              "progress": 4176,
+              "top": 612
+            },
+            {
+              "progress": 4232,
+              "top": 612
+            },
+            {
+              "progress": 4295,
+              "top": 612
+            },
+            {
+              "progress": 4395,
+              "top": 612
+            },
+            {
+              "progress": 4470,
+              "top": 612
+            },
+            {
+              "progress": 4541,
+              "top": 612
+            },
+            {
+              "progress": 4603,
+              "top": 612
+            },
+            {
+              "progress": 4631,
+              "top": 612
+            },
+            {
+              "progress": 4673,
+              "top": 612
+            },
+            {
+              "progress": 4803,
+              "top": 612
+            },
+            {
+              "progress": 4856,
+              "top": 612
+            }
+          ],
+          "displayedThumbStartX": 276,
+          "displayedThumbEndX": 667,
+          "physicalDevice": false
+        },
+        "HD_RESULT": {
+          "api": 35,
+          "clips": [
+            {
+              "name": "hd-h264.mp4",
+              "width": 1920,
+              "height": 1080,
+              "decoder": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 / no",
+              "originalLuma": 21.919805083125468,
+              "enhancedLuma": 39.62355293470144
+            },
+            {
+              "name": "hd-hevc10.mp4",
+              "width": 1920,
+              "height": 1080,
+              "decoder": "H.265 / HEVC (High Efficiency Video Coding) / no",
+              "originalLuma": 21.823723038335174,
+              "enhancedLuma": 39.62675479438465
+            }
+          ],
+          "physicalDevice": false
+        },
+        "huaweiPhysicalValidation": "NOT_RUN",
+        "environment": "Android API 35 x86_64 emulator"
+      }
+    }
+  ],
   "tasks": [
     {
       "id": "T01",
       "title": "固定源码、最小测试基础与可构建安装包",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T02",
       "title": "SAF 文件访问、文件页与只读输入租约",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T03",
       "title": "播放会话、异步代次与 Surface 安全生命周期",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T04",
       "title": "源视频坐标与统一视口数学",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T05",
       "title": "手势优先级与触点唯一所有权",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T06",
       "title": "可见播放控制、慢速、音量、轨道与横竖屏布局",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T07",
       "title": "原生 GPU 扩展、快照提交与实际应用回执",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T08",
       "title": "选区亮度统计、数值编码与曝光时间稳定",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T09",
       "title": "暗部降噪、局部提亮、高光与细节处理",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T10",
       "title": "增强面板、参数锁定、HDR 旁路与同视图对比",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T11",
       "title": "可调整触控选框、放大平移及区域增强联动",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T12",
       "title": "掉帧、热状态与增强资源自适应",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T13",
       "title": "微秒级 A／B 时间轴、边界预览与循环",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T14",
       "title": "FFmpeg 原生原码流剪辑与随机访问边界证明",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T15",
       "title": "Transformer 精确剪辑与所选轨道映射",
       "status": "LIMITED_IMPLEMENTATION",
       "reason": "SDR single-video/single-audio forced reencode; explicit multi-track refusal",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T16",
       "title": "安全输出提交、取消与可恢复失败",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T17",
       "title": "无控件截图、诊断信息与本地隐私检查",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T18",
       "title": "整机流程回归与可复现证据归档",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
-      "reason": "Implementation present; bounded CI checks available, complete scenario matrix not executed",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T19",
       "title": "Mate 20 X 实物素材与持续性能验收",
       "status": "NOT_RUN",
       "reason": "No Huawei Mate 20 X / HarmonyOS 4.0 physical device connected",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     },
     {
       "id": "T20",
       "title": "发布门禁、签名、源码一致性与完整测试包",
       "status": "TEST_BUILD",
-      "reason": "Debug signed APK and source/evidence hashes; no stable production signing or main merge",
-      "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      "reason": "Debug signed APK; no stable production signing or main merge; target physical validation pending",
+      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
     }
   ],
   "blockers": [
@@ -281,17 +727,30 @@
     },
     {
       "code": "OPEN_FULL_ACCEPTANCE",
-      "detail": "See acceptance-current.json and validation-notes.md; 4K enhancement bypass, HDR/multi-track export restrictions, fault and lifecycle stress not fully validated"
+      "detail": "38 full criteria not executed; 4K/HDR enhancement bypass, export restrictions, provider/lifecycle/performance stress pending"
     }
   ],
   "previousCheckpointSummary": {
-    "checkpoint": "T01-checkpoint-01",
-    "updatedAt": "2026-10-03T10:07:17.945625+00:00",
-    "historicalHostTests": {
-      "passed": 93,
-      "failed": 0,
-      "scope": "qa/tests"
-    }
+    "checkpoint": "Android-test-build-20261003",
+    "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8",
+    "workflowRun": 37141636519,
+    "userReportedBlackScreen": true
+  },
+  "regressions": {
+    "oldProductionRun": 37144900225,
+    "oldProductionFailedTests": [
+      "progressDoesNotJumpToZeroForMissingPositionSample",
+      "rendererFailureRecoversVisibleVideo"
+    ],
+    "pausedExposureFailureRun": 37146650466,
+    "textureViewApi29BlackScreenRun": 37146650466,
+    "exposureBaselineComparisonRun": 37149864931,
+    "exposureBaselineComparisonLuma": [
+      29.901980362765922,
+      42.00588805472154
+    ],
+    "displayContainer": "SurfaceView",
+    "physicalBlackScreenCause": "Not reproduced on Huawei; no physical logs or connected device"
   },
   "sourceAcquisition": {
     "status": "RESTORED",
