@@ -16,15 +16,29 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: python3 ci/install_sdk.py
-      - name: Archive installed official native toolchain
+      - name: Archive and split installed official native toolchain
         run: |
           set -euo pipefail
           mkdir -p out
           tar czf out/android-ndk-r30-linux.tar.gz --exclude='*.ttf' --exclude='*.otf' --exclude='*.ttc' -C "$ANDROID_NDK_ROOT" .
           sha256sum out/android-ndk-r30-linux.tar.gz > out/SHA256SUMS.txt
+          split -b 300M out/android-ndk-r30-linux.tar.gz out/ndk.part.
           cp -r toolchain-evidence out/evidence
       - uses: actions/upload-artifact@v4
         with:
-          name: official-ndk-r30-linux
-          path: out
+          name: official-ndk-r30-aa
+          path: |
+            out/ndk.part.aa
+            out/SHA256SUMS.txt
+            out/evidence
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-ndk-r30-ab
+          path: out/ndk.part.ab
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-ndk-r30-ac
+          path: out/ndk.part.ac
           retention-days: 7
