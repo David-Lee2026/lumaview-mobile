@@ -1,46 +1,32 @@
-# 执行记录模板与当前状态
+# Android 实施进度与验证记录
 
-规格已确认；实施计划待执行方式确认。当前没有手机版APK或已执行的手机测试。
+源码构建提交：`44a98548fac22c66c99420cbe3cedfc5c1e0ede8`。APK / 集成 run：[37141636519](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519)。
 
-| 实施任务 | 内容 | 状态 | 实现提交 | 最近测试／受阻原因 |
-|---|---|---|---|---|
-| T01 | 固定源码、最小测试基础与可构建安装包 | NOT_STARTED | 无 | 尚未执行 |
-| T02 | SAF 文件访问、文件页与只读输入租约 | NOT_STARTED | 无 | 尚未执行 |
-| T03 | 播放会话、异步代次与 Surface 安全生命周期 | NOT_STARTED | 无 | 尚未执行 |
-| T04 | 源视频坐标与统一视口数学 | NOT_STARTED | 无 | 尚未执行 |
-| T05 | 手势优先级与触点唯一所有权 | NOT_STARTED | 无 | 尚未执行 |
-| T06 | 可见播放控制、慢速、音量、轨道与横竖屏布局 | NOT_STARTED | 无 | 尚未执行 |
-| T07 | 原生 GPU 扩展、快照提交与实际应用回执 | NOT_STARTED | 无 | 尚未执行 |
-| T08 | 选区亮度统计、数值编码与曝光时间稳定 | NOT_STARTED | 无 | 尚未执行 |
-| T09 | 暗部降噪、局部提亮、高光与细节处理 | NOT_STARTED | 无 | 尚未执行 |
-| T10 | 增强面板、参数锁定、HDR 旁路与同视图对比 | NOT_STARTED | 无 | 尚未执行 |
-| T11 | 可调整触控选框、放大平移及区域增强联动 | NOT_STARTED | 无 | 尚未执行 |
-| T12 | 掉帧、热状态与增强资源自适应 | NOT_STARTED | 无 | 尚未执行 |
-| T13 | 微秒级 A／B 时间轴、边界预览与循环 | NOT_STARTED | 无 | 尚未执行 |
-| T14 | FFmpeg 原生原码流剪辑与随机访问边界证明 | NOT_STARTED | 无 | 尚未执行 |
-| T15 | Transformer 精确剪辑与所选轨道映射 | NOT_STARTED | 无 | 尚未执行 |
-| T16 | 安全输出提交、取消与可恢复失败 | NOT_STARTED | 无 | 尚未执行 |
-| T17 | 无控件截图、诊断信息与本地隐私检查 | NOT_STARTED | 无 | 尚未执行 |
-| T18 | 整机流程回归与可复现证据归档 | NOT_STARTED | 无 | 尚未执行 |
-| T19 | Mate 20 X 实物素材与持续性能验收 | NOT_STARTED | 无 | 尚未执行 |
-| T20 | 发布门禁、签名、源码一致性与完整测试包 | NOT_STARTED | 无 | 尚未执行 |
+工程已恢复、ARM64 APK 已构建和静态验证；API 35 x86_64 模拟器执行有限范围的实际触控、shader 像素和两种导出验证。完整严格验收与华为真机项目未执行，不以局部通过替代完整场景。
 
-## 每次接续填写
+| 任务 | 内容 | 当前状态 | 验证边界 |
+|---|---|---|---|
+| T01 | 固定源码、最小测试基础与可构建安装包 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T02 | SAF 文件访问、文件页与只读输入租约 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T03 | 播放会话、异步代次与 Surface 安全生命周期 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T04 | 源视频坐标与统一视口数学 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T05 | 手势优先级与触点唯一所有权 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T06 | 可见播放控制、慢速、音量、轨道与横竖屏布局 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T07 | 原生 GPU 扩展、快照提交与实际应用回执 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T08 | 选区亮度统计、数值编码与曝光时间稳定 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T09 | 暗部降噪、局部提亮、高光与细节处理 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T10 | 增强面板、参数锁定、HDR 旁路与同视图对比 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T11 | 可调整触控选框、放大平移及区域增强联动 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T12 | 掉帧、热状态与增强资源自适应 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T13 | 微秒级 A／B 时间轴、边界预览与循环 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T14 | FFmpeg 原生原码流剪辑与随机访问边界证明 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T15 | Transformer 精确剪辑与所选轨道映射 | LIMITED_IMPLEMENTATION | SDR single-video/single-audio forced reencode; explicit multi-track refusal |
+| T16 | 安全输出提交、取消与可恢复失败 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T17 | 无控件截图、诊断信息与本地隐私检查 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T18 | 整机流程回归与可复现证据归档 | IMPLEMENTED_PARTIAL_VALIDATION | Implementation present; bounded CI checks available, complete scenario matrix not executed |
+| T19 | Mate 20 X 实物素材与持续性能验收 | NOT_RUN | No Huawei Mate 20 X / HarmonyOS 4.0 physical device connected |
+| T20 | 发布门禁、签名、源码一致性与完整测试包 | TEST_BUILD | Debug signed APK and source/evidence hashes; no stable production signing or main merge |
 
-```text
-任务：
-规格/计划版本和SHA256：
-开始时源commit：
-本次修改文件：
-先失败的测试及实际错误：
-修复方案和最终commit：
-执行命令及退出码：
-APK/SO/patch/素材SHA256：
-实际设备和环境类型：
-本次通过/失败/未跑/受阻编号：
-证据目录：
-已知限制：
-下一项任务及必要输入：
-```
+详细结果见 `audit/execution-status.json`；未执行项和限制见 `audit/acceptance-current.json` 与 [验证说明](validation-notes.md)。
 
-只填写实际记录；空项写未取得，不用预期数据代填。任务编号T01–T20和规格剪辑验收编号T01–T07必须带上上下文名称。
+未合并 main。测试包使用调试证书，尚未配置稳定发行签名。华为 Mate 20 X／HarmonyOS 4.0 真机状态为 `NOT_RUN`。

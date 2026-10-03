@@ -1,5 +1,5 @@
 {
-  "status": "PLAN_ONLY",
+  "status": "IMPLEMENTED_WITH_OPEN_VALIDATION",
   "tasks": [
     {
       "id": "T01",
@@ -1358,5 +1358,7 @@
       "risk": "",
       "status": "NOT_STARTED"
     }
-  ]
+  ],
+  "implementationSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8",
+  "executionStatus": "audit/execution-status.json"
 }

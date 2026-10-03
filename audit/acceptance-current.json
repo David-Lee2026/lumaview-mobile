@@ -16,14 +16,20 @@
         "T18",
         "T20"
       ],
-      "status": "BLOCKED",
+      "status": "NOT_RUN",
       "evidence": [
         "artifacts/source-acquisition-result.json",
         "artifacts/preflight-actual.json"
       ],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "APK_NOT_BUILT; source/SDK/NDK prerequisites blocked"
+      "reason": "APK built and static-verified; ARM64 installation and actual 16KB-page runtime not executed",
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "artifact": "LumaView-Android-arm64",
+        "buildSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      },
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "C02",
@@ -38,7 +44,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "target_physical_device",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "C03",
@@ -48,14 +55,20 @@
       "supporting_tasks": [
         "T01"
       ],
-      "status": "BLOCKED",
+      "status": "NOT_RUN",
       "evidence": [
         "artifacts/source-acquisition-result.json",
         "artifacts/preflight-actual.json"
       ],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "APK_NOT_BUILT; source/SDK/NDK prerequisites blocked"
+      "reason": "APK built and static-verified; ARM64 installation and actual 16KB-page runtime not executed",
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "artifact": "LumaView-Android-arm64",
+        "buildSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
+      },
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "P01",
@@ -69,7 +82,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "P02",
@@ -83,7 +97,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "P03",
@@ -98,7 +118,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "P04",
@@ -112,7 +133,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "P05",
@@ -127,7 +149,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "R01",
@@ -142,7 +165,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "R02",
@@ -157,7 +186,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "R03",
@@ -172,7 +207,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "R04",
@@ -187,7 +223,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "R05",
@@ -202,7 +239,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "R06",
@@ -219,7 +257,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E01",
@@ -234,7 +273,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "E02",
@@ -249,7 +294,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "E03",
@@ -264,7 +315,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "E04",
@@ -279,7 +336,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E05",
@@ -293,7 +351,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E06",
@@ -307,7 +366,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E07",
@@ -321,7 +381,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E08",
@@ -335,7 +396,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E09",
@@ -349,7 +411,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "E10",
@@ -361,7 +424,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "target_physical_device",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "T01",
@@ -375,7 +439,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "T02",
@@ -389,7 +459,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "T03",
@@ -403,7 +474,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "T04",
@@ -417,7 +494,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "T05",
@@ -431,7 +509,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "T06",
@@ -446,7 +530,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "T07",
@@ -461,7 +546,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "S01",
@@ -475,7 +561,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "S02",
@@ -489,7 +576,13 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false,
+      "partialEvidence": {
+        "workflowRun": 37141636519,
+        "environment": "Android API 35 x86_64 emulator",
+        "note": "Bounded automated checks; does not prove every condition in the full criterion"
+      }
     },
     {
       "id": "S03",
@@ -503,7 +596,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "S04",
@@ -518,7 +612,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "F01",
@@ -530,7 +625,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "target_physical_device",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "F02",
@@ -545,7 +641,8 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     },
     {
       "id": "F03",
@@ -563,9 +660,11 @@
       "evidence": [],
       "measurements": null,
       "environment_required": "specified_test_environment",
-      "reason": "Responsible mobile task not yet implemented or executed"
+      "reason": "Responsible mobile task not yet implemented or executed",
+      "fullAcceptanceExecuted": false
     }
   ],
   "kind": "mobile-acceptance-current-status",
-  "updatedAt": "2026-10-03T10:08:39.057698+00:00"
+  "updatedAt": "2026-10-03T18:00:26.212730+00:00",
+  "buildSourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8"
 }

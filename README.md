@@ -6,6 +6,10 @@ Android 本地视频播放器，恢复自固定版本 mpv-android，提供可见
 
 ## 构建和下载
 
+已验证构建：[run 37141636519](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519)，源码提交 `44a98548fac22c66c99420cbe3cedfc5c1e0ede8`。下载 [ARM64 APK 与校验／构建日志 ZIP](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519/artifacts/11280692833) 或 [x86_64 集成验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37141636519/artifacts/11280707897)。GitHub artifact 下载需登录，保留至 2026-11-02（UTC）。
+
+ARM64 APK SHA256：`67c6bab43251b296895d8865de0c43219da9e36098cbea98bcaa4721690ae197`。两 ABI 各 9 项单测通过；API 35 x86_64 模拟器 2 项真实播放／ROI／导出集成测试和主机导出校验通过。华为真机与完整 38 项严格验收场景仍未执行。
+
 [APK 与集成验证 workflow](https://github.com/David-Lee2026/lumaview-mobile/actions/workflows/mobile-release.yml) 复用成功 run `37127934301` 的 `native-arm64`、`native-x86_64`。仅为固定 FFmpeg 增加 MP4 muxer，并重编译带 LumaView 扩展的固定 mpv 与 JNI；其他原生依赖复用现有产物。
 
 成功 run 的 `LumaView-Android-arm64` 包含可直接安装的 ARM64 APK、`SHA256SUMS.txt`、依赖锁定、构建日志、签名／包信息／ZIP 与 ELF 对齐检查、单元测试结果。`LumaView-Android-x86_64` 另含 Android API 35 模拟器的真实触控测试、原画／增强／ROI 截图、导出媒体、编码器摘要和完整解码／压缩包负载检查。`LumaView-readable-source` 固定同一源码提交；构建不会跟随移动中的分支 head。
