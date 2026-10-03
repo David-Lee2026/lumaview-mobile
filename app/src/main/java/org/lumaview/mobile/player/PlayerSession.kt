@@ -101,7 +101,12 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   crop=value;rotation=((rotate%360)+360)%360;revision++;settings=settings.copy(locked=false)
   if(initialized){MPVLib.setPropertyInt("video-rotate",rotation);MPVLib.setPropertyString("video-crop",crop?.crop()?:"");submit(true)}
  }}
- fun enhance(value:EnhanceSettings,reset:Boolean=false){safe{settings=value;if(initialized)submit(reset)}}
+ fun enhance(value:EnhanceSettings,reset:Boolean=false){safe{
+  // Explicit exposure/mode changes must redraw even when the media PTS is
+  // unchanged. Temporal adaptation has dt=0 on a paused frame.
+  val resetExposure=reset||value.manualEv!=settings.manualEv||value.mode!=settings.mode||value.bypass!=settings.bypass||(settings.locked&&!value.locked)
+  settings=value;if(initialized)submit(resetExposure)
+ }}
  private fun submit(reset:Boolean){request++;val effective=if(rendererTier>=2)settings.copy(bypass=true)else settings;val rc=NativeStage.submit(effective.values(),generation,surfaceGeneration,revision,request,reset);if(rc!=0)error="增强参数提交失败 ($rc)"}
  /** Reconfigure decoding without abandoning the Surface or resetting the timeline. */
  fun decoder(value:String){safe{require(value=="no"||value=="mediacodec-copy");decoderMode=value;context.getSharedPreferences("playback",0).edit().putString("decoder",value).apply();if(initialized){MPVLib.setPropertyString("hwdec",value);submit(true)}}}

@@ -142,6 +142,7 @@ class PlayerIntegrationTest {
    fun collect(node:AccessibilityNodeInfo){if(node.className?.toString()=="android.widget.SeekBar")bars.add(node);for(i in 0 until node.childCount)node.getChild(i)?.let{collect(it)}}
    collect(inst.uiAutomation.rootInActiveWindow);assertTrue(bars.isNotEmpty());val args=android.os.Bundle().apply{putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE,150f)}
    assertTrue(bars[0].performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id,args));Thread.sleep(400)
+   inst.runOnMainSync{assertEquals("exposure slider must submit +0.5 EV",.5f,(value("enhancement") as EnhanceSettings).manualEv,.001f)}
    val done=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("完成");assertTrue(done.isNotEmpty());assertTrue(done[0].performAction(AccessibilityNodeInfo.ACTION_CLICK))
    waitFor("exposure setting render"){session.state.receipt?.let{it[3]>request&&it[6]==0.0}==true}
    val after=mean(screenSnapshot("screen-exposure-after"));assertTrue("exposure setting must change actual displayed pixels",after>before*1.05)
