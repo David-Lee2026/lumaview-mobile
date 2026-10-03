@@ -15,10 +15,10 @@ try:
  result=execute([adb,'shell','am','instrument','-w','-r',package+'/androidx.test.runner.AndroidJUnitRunner'],300)
  (ev/'device-test.log').write_bytes(result.stdout+result.stderr)
  output=(result.stdout+result.stderr).decode('utf-8','replace');match=re.search(r'OK \((\d+) tests?\)',output)
- assert result.returncode==0 and match and int(match.group(1))==2,output[-6000:]
+ assert result.returncode==0 and match and int(match.group(1))==4,output[-6000:]
  names=list(dict.fromkeys(re.findall(r'INSTRUMENTATION_STATUS: test=(\w+)',output)))
- assert set(names)=={'realTouchRenderingAndExports','roiStatisticsIgnoreOutsideBrightnessAndRespondInside'},names
- (ev/'instrumentation-result.json').write_text(json.dumps({'environment':'Android API 35 x86_64 emulator','physicalDevice':False,'executedTests':2,'failures':0,'tests':names,'runnerOutputSha256':hashlib.sha256(result.stdout+result.stderr).hexdigest()},indent=2))
+ assert set(names)=={'realTouchRenderingAndExports','roiStatisticsIgnoreOutsideBrightnessAndRespondInside','rendererFailureRecoversVisibleVideo','progressDoesNotJumpToZeroForMissingPositionSample'},names
+ (ev/'instrumentation-result.json').write_text(json.dumps({'environment':'Android API 35 x86_64 emulator','physicalDevice':False,'executedTests':4,'failures':0,'tests':names,'runnerOutputSha256':hashlib.sha256(result.stdout+result.stderr).hexdigest()},indent=2))
 finally:
  for name,args in [('logcat.txt',['logcat','-d']),('emulator-properties.txt',['shell','getprop'])]:
   r=execute([adb]+args);(ev/name).write_bytes(r.stdout+r.stderr)
@@ -27,4 +27,4 @@ finally:
  assert capture.returncode==0,capture.stderr.decode('utf-8','replace')
  with tarfile.open(ev/'device-integration.tar') as archive:
   names=set(archive.getnames());assert {'integration/RESULT.json','integration/ROI_RESULT.json','integration/copy.mp4','integration/exact.mp4','baseline.mp4','roi-scenes.mp4'}<=names,names
-print('2 actual Android instrumentation tests and evidence capture passed')
+print('4 actual Android instrumentation tests and evidence capture passed')

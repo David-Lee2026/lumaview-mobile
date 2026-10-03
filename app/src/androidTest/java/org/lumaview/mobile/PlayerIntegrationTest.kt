@@ -2,6 +2,7 @@ package org.lumaview.mobile
 import android.app.Activity
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Uri
 import android.os.SystemClock
@@ -37,6 +38,16 @@ class PlayerIntegrationTest {
  private fun tap(label:String)=tap(find(label))
  private fun drag(x1:Float,y1:Float,x2:Float,y2:Float){val d=SystemClock.uptimeMillis();touch(x1,y1,0,d,d);for(i in 1..12){Thread.sleep(30);touch(x1+(x2-x1)*i/12,y1+(y2-y1)*i/12,2,SystemClock.uptimeMillis(),d)};touch(x2,y2,1,SystemClock.uptimeMillis(),d);Thread.sleep(600)}
  private fun snapshot(name:String):File {val out=File(evidence,"$name.png");val latch=CountDownLatch(1);var result:Result<File>?=null;session.screenshot(out){result=it;latch.countDown()};assertTrue(latch.await(20,TimeUnit.SECONDS));result!!.getOrThrow();return out}
+ // This captures the displayed window, rather than mpv's off-screen framebuffer.
+ private fun screenSnapshot(name:String):File {
+  inst.waitForIdleSync();Thread.sleep(350)
+  val screen=inst.uiAutomation.takeScreenshot()?:error("display screenshot unavailable")
+  val frame=bounds(value("videoFrame") as View)
+  val fitted=RoiMath(session.state.width,session.state.height,frame.width(),frame.height(),session.state.rotation,session.state.sar)
+  val left=(frame.left+fitted.left).toInt().coerceIn(0,screen.width-1);val top=(frame.top+fitted.top).toInt().coerceIn(0,screen.height-1)
+  val bitmap=Bitmap.createBitmap(screen,left,top,fitted.displayWidth.toInt().coerceIn(1,screen.width-left),fitted.displayHeight.toInt().coerceIn(1,screen.height-top))
+  val out=File(evidence,"$name.png");out.outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle();screen.recycle();return out
+ }
  private fun mean(file:File):Double {val bitmap=BitmapFactory.decodeFile(file.path)?:error("PNG decode");val pixels=IntArray(bitmap.width*bitmap.height);bitmap.getPixels(pixels,0,bitmap.width,0,0,bitmap.width,bitmap.height);bitmap.recycle();return pixels.sumOf{.2126*((it shr 16)and 255)+.7152*((it shr 8)and 255)+.0722*(it and 255)}/pixels.size}
  @Test fun realTouchRenderingAndExports(){
   val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{a->input.outputStream().use{a.copyTo(it)}}
@@ -48,6 +59,7 @@ class PlayerIntegrationTest {
    val receipt=session.state.receipt!!;assertTrue(receipt[3]>0)
    tap("Ⅱ 暂停");waitFor("pause"){session.state.paused}
    val enhanced=snapshot("01-enhanced")
+   val displayedEnhanced=screenSnapshot("screen-enhanced");assertTrue("displayed video must not be black",mean(displayedEnhanced)>4.0)
    tap("画面增强")
    // Dialog views have their own window; use real system accessibility input to activate it.
    val root=inst.uiAutomation.rootInActiveWindow
@@ -55,6 +67,7 @@ class PlayerIntegrationTest {
    Thread.sleep(400);val done=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("完成");assertTrue(done.isNotEmpty());done[0].getBoundsInScreen(br);val d2=SystemClock.uptimeMillis();touch(br.exactCenterX(),br.exactCenterY(),0,d2,d2);touch(br.exactCenterX(),br.exactCenterY(),1,d2+55,d2)
    waitFor("original comparison receipt"){session.state.receipt?.get(5)==0.0}
    val original=snapshot("02-original");val a=mean(original);val b=mean(enhanced);assertTrue("pixel enhancement $a -> $b",b>a*1.12)
+   val displayedOriginal=screenSnapshot("screen-original");assertTrue("original must reach the displayed window",mean(displayedOriginal)>4.0);assertTrue("enhancement must visibly change the displayed video",mean(displayedEnhanced)>mean(displayedOriginal)*1.12)
    val bar=value("seek") as SeekBar;val sr=bounds(bar);drag(sr.left+sr.width()*.3f,sr.exactCenterY(),sr.left+sr.width()*.65f,sr.exactCenterY());waitFor("seek by touch"){(session.state.positionUs?:0)>6_000_000};assertTrue(session.state.paused)
    tap("区域放大");assertNull(value("crop"));val vr=bounds(value("videoFrame") as View)
    // Work within fitted video, excluding letterbox. The fixture aspect ratio is 16:9.
@@ -75,6 +88,34 @@ class PlayerIntegrationTest {
    exporter.start(Uri.fromFile(input),selected,exact,true,2_000_000,{}){r->exactResult=r;end.countDown()};assertTrue(end.await(120,TimeUnit.SECONDS));exactResult!!.getOrThrow();assertTrue(exact.length()>0)
    val report=JSONObject().put("nativeLoaded",true).put("originalLuma",a).put("enhancedLuma",b).put("uiRangeStartUs",selected.startUs).put("uiRangeEndUs",selected.endUs).put("copyPlan",plan).put("copyResult",copyResult).put("exactResult",exactResult!!.getOrThrow()).put("abi",android.os.Build.SUPPORTED_ABIS.joinToString()).put("physicalDevice",false)
    File(evidence,"RESULT.json").writeText(report.toString(2));session.resumeAfterExport()
+  }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
+ }
+
+ @Test fun rendererFailureRecoversVisibleVideo(){
+  val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
+  try {
+   waitFor("initial displayed video"){session.state.receipt?.get(6)==0.0};session.pause(true);waitFor("pause before render fault"){session.state.paused}
+   val before=mean(screenSnapshot("screen-before-fault"));assertTrue(before>4.0)
+   val beforeRequest=session.state.receipt!![3]
+   val bad=File(context.filesDir,"deliberately-invalid.glsl");bad.writeText("//!HOOK MAIN\n//!BIND HOOKED\nvec4 hook(){ return intentionally_invalid_shader; }\n")
+   MPVLib.setPropertyString("glsl-shaders",bad.path);session.enhance(EnhanceSettings(),true)
+   // A bad enhancement program must not strand playback at a broken frame.
+   waitFor("recover shader failure",20000){session.state.receipt?.let{it[6]==0.0&&it[5]>0&&it[3]>beforeRequest+1}==true}
+   val restored=mean(screenSnapshot("screen-after-fault"));assertTrue("failed shader must recover visible enhanced video",restored>4.0&&restored/before in .7..1.3)
+   File(evidence,"RECOVERY_RESULT.json").writeText(JSONObject().put("displayedBefore",before).put("displayedAfter",restored).put("recovered",true).put("physicalDevice",false).toString(2))
+  }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
+ }
+ @Test fun progressDoesNotJumpToZeroForMissingPositionSample(){
+  val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
+  try{
+   waitFor("progress playback"){(session.state.positionUs?:0)>1_000_000&&session.state.durationUs!=null}
+   inst.runOnMainSync{
+    val bar=value("seek") as SeekBar;val previous=bar.progress;assertTrue(previous>0)
+    activity.javaClass.getDeclaredMethod("render",org.lumaview.mobile.player.PlayerState::class.java).apply{isAccessible=true}.invoke(activity,session.state.copy(positionUs=null))
+    assertTrue("a missing playback sample must not reset the thumb",bar.progress>=previous)
+   }
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
  @Test fun roiStatisticsIgnoreOutsideBrightnessAndRespondInside(){
