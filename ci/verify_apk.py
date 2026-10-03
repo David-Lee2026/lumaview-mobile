@@ -12,7 +12,8 @@ def run(cmd):return subprocess.check_output(list(map(str,cmd)),stderr=subprocess
 badging=run([tools/'aapt2','dump','badging',apk]);(ev/'apk-manifest.txt').write_text(badging)
 assert "name='org.lumaview.mobile'" in badging
 assert "versionName='0.1.0-test'" in badging
-assert "sdkVersion:'23'" in badging
+assert re.search(r"(?m)^(?:minSdkVersion|sdkVersion):'23'\s*$",badging), 'minimum SDK must be exactly 23'
+assert re.search(r"(?m)^targetSdkVersion:'36'\s*$",badging), 'target SDK must be exactly 36'
 for permission in ['INTERNET','CAMERA','RECORD_AUDIO','MANAGE_EXTERNAL_STORAGE','SYSTEM_ALERT_WINDOW']:assert 'android.permission.'+permission not in badging,permission
 elf=[]
 with zipfile.ZipFile(apk) as z:
