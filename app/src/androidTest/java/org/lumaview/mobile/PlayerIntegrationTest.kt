@@ -105,7 +105,10 @@ class PlayerIntegrationTest {
    // A bad enhancement program must not strand playback at a broken frame.
    waitFor("recover shader failure",20000){session.state.receipt?.let{it[6]==0.0&&it[5]>0&&it[3]>beforeRequest+1}==true}
    val restored=mean(screenSnapshot("screen-after-fault"));assertTrue("failed shader must recover visible enhanced video",restored>4.0&&restored/before in .7..1.3)
-   File(evidence,"RECOVERY_RESULT.json").writeText(JSONObject().put("displayedBefore",before).put("displayedAfter",restored).put("recovered",true).put("physicalDevice",false).toString(2))
+   val nextRequest=session.state.receipt!![3];MPVLib.setPropertyString("glsl-shaders",bad.path);session.enhance(EnhanceSettings(),true)
+   waitFor("second shader failure restores original",20000){session.state.rendererTier==2&&session.state.receipt?.let{it[6]==0.0&&it[5]==0.0&&it[3]>nextRequest+1}==true}
+   val raw=mean(screenSnapshot("screen-after-second-fault"));assertTrue("original must remain visible after both enhancement paths fail",raw>4.0&&raw<restored*.9)
+   File(evidence,"RECOVERY_RESULT.json").writeText(JSONObject().put("displayedBefore",before).put("displayedAfter",restored).put("displayedOriginalAfterSecondFault",raw).put("recovered",true).put("originalFallbackVisible",true).put("physicalDevice",false).toString(2))
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
  @Test fun progressDoesNotJumpToZeroForMissingPositionSample(){
@@ -138,12 +141,30 @@ class PlayerIntegrationTest {
    tap("画面增强");val bars=ArrayList<AccessibilityNodeInfo>()
    fun collect(node:AccessibilityNodeInfo){if(node.className?.toString()=="android.widget.SeekBar")bars.add(node);for(i in 0 until node.childCount)node.getChild(i)?.let{collect(it)}}
    collect(inst.uiAutomation.rootInActiveWindow);assertTrue(bars.isNotEmpty());val args=android.os.Bundle().apply{putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE,150f)}
-   assertTrue(bars[0].performAction(AccessibilityNodeInfo.ACTION_SET_PROGRESS,args));Thread.sleep(400)
+   assertTrue(bars[0].performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id,args));Thread.sleep(400)
    val done=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("完成");assertTrue(done.isNotEmpty());assertTrue(done[0].performAction(AccessibilityNodeInfo.ACTION_CLICK))
    waitFor("exposure setting render"){session.state.receipt?.let{it[3]>request&&it[6]==0.0}==true}
    val after=mean(screenSnapshot("screen-exposure-after"));assertTrue("exposure setting must change actual displayed pixels",after>before*1.05)
    File(evidence,"DISPLAY_RESULT.json").writeText(JSONObject().put("api",android.os.Build.VERSION.SDK_INT).put("softwareLuma",software).put("hardwareCopyLuma",hardware).put("beforeExposureLuma",before).put("afterExposureLuma",after).put("settingsVisible",true).put("physicalDevice",false).toString(2))
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
+ }
+ @Test fun highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement(){
+  val results=org.json.JSONArray()
+  val names=listOf("hd-h264.mp4","hd-hevc10.mp4")
+  for(name in names){val file=File(context.filesDir,name);inst.context.assets.open(name).use{src->file.outputStream().use{src.copyTo(it)}}}
+  for(name in names){
+   context.getSharedPreferences("playback",0).edit().putString("decoder","no").commit()
+   val input=File(context.filesDir,name);context.getSharedPreferences("history",0).edit().putLong("position:${Uri.fromFile(input)}",0).commit()
+   activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
+   try{
+    waitFor("1080p decode $name"){session.state.width==1920&&session.state.height==1080&&session.state.receipt?.get(6)==0.0&&session.state.receipt?.get(5)==1.0}
+    session.pause(true);waitFor("1080p pause"){session.state.paused};val enhanced=mean(screenSnapshot("screen-$name-enhanced"))
+    session.enhance(EnhanceSettings(mode=0),true);waitFor("1080p original"){session.state.receipt?.get(5)==0.0&&session.state.receipt?.get(6)==0.0};val original=mean(screenSnapshot("screen-$name-original"))
+    assertTrue("1080p $name original must be visible",original>4.0);assertTrue("1080p $name enhancement must be visible",enhanced>original*1.1)
+    results.put(JSONObject().put("name",name).put("width",session.state.width).put("height",session.state.height).put("decoder",session.state.decoder).put("originalLuma",original).put("enhancedLuma",enhanced))
+   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
+  }
+  File(evidence,"HD_RESULT.json").writeText(JSONObject().put("api",android.os.Build.VERSION.SDK_INT).put("clips",results).put("physicalDevice",false).toString(2))
  }
  @Test fun roiStatisticsIgnoreOutsideBrightnessAndRespondInside(){
   val input=File(context.filesDir,"roi-scenes.mp4");inst.context.assets.open("roi-scenes.mp4").use{src->input.outputStream().use{src.copyTo(it)}}

@@ -31,6 +31,12 @@ class CoreTest {
         assertEquals(9_700_000L,clock.position(1100)!!)
         assertEquals(10_000_000L,clock.position(1350)!!)
     }
+    @Test fun pausedProgressFollowsActualBackwardFrameSteps() {
+        val clock=PlaybackProgress()
+        clock.sample(1,1_000_000,10_000_000,true,1.0,1000)
+        clock.sample(1,966_667,10_000_000,true,1.0,1100)
+        assertEquals(966_667L,clock.position(1200)!!)
+    }
     @Test fun letterboxIsNotSelectable() {
         val map = RoiMath(1920, 1080, 1000, 1000)
         assertNull(map.point(100.0, 50.0))

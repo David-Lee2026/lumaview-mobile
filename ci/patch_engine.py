@@ -178,8 +178,8 @@ if 'lvm_receipt_v1 result=' not in part:
           .view_revision=p->lvm.view_revision,.request_id=p->lvm.request_id,
           .pts_us=frame->current->pts==MP_NOPTS_VALUE?0:llrint(frame->current->pts*1e6),
           .valid=1,
-          .effective_mode=((p->lvm.flags&1)||p->lvm_hdr||!p->lvm_applied||p->broken_frame)?0:p->lvm.mode,
-          .reason=p->lvm_hdr?1:(p->lvm_over_budget?3:((p->lvm.mode==0||(p->lvm.flags&1))?0:(p->broken_frame||gl_sc_error_state(p->sc)||!p->lvm_applied?2:0))),
+          .effective_mode=((p->lvm.flags&1)||p->lvm_hdr||!p->lvm_applied||p->broken_frame||gl_sc_error_state(p->sc))?0:p->lvm.mode,
+          .reason=(p->broken_frame||gl_sc_error_state(p->sc))?2:(p->lvm_hdr?1:(p->lvm_over_budget?3:((p->lvm.mode==0||(p->lvm.flags&1))?0:(!p->lvm_applied?2:0)))),
           .lock_applied=(p->lvm.flags&2)&&p->lvm_history_valid,
           .actual_rect={p->src_rect.x0,p->src_rect.y0,p->src_rect.x1,p->src_rect.y1},
           .resource_bytes=0, /* unavailable: not a measured allocator counter */

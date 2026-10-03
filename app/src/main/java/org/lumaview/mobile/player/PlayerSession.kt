@@ -108,7 +108,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  private fun recoverRenderer(){
   if(rendererTier>=2)return
   rendererTier++
-  videoNotice=if(rendererTier==1)"兼容增强：降噪／细节已停用" else "增强不可用：已恢复原画"
+  videoNotice=if(rendererTier==1)"兼容增强：降噪／细节已停用" else "增强已停用，正在重建原画"
   MPVLib.setPropertyString("glsl-shaders",if(rendererTier==1)File(context.filesDir,"compatible.glsl").absolutePath else "")
   submit(true)
  }

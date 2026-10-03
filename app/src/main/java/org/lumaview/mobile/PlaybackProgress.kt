@@ -18,7 +18,7 @@ class PlaybackProgress {
    if(pending!=null&&abs(position-pending!!)>500_000&&now<pendingUntil){paused=stopped;speed=rate;return}
    pending=null
    val discontinuity=current==null||abs(position-current)>1_000_000
-   if(discontinuity){anchor=position;shown=position;anchorMs=now}
+   if(discontinuity||stopped){anchor=position;shown=position;anchorMs=now}
    else if((lastSample==null||position>lastSample!!)||stopped!=paused||rate!=speed){anchor=if(stopped)max(shown,position)else position;anchorMs=now}
    lastSample=position
   }else if(current!=null&&(stopped!=paused||rate!=speed)){anchor=current;anchorMs=now}

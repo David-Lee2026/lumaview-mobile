@@ -99,7 +99,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   if(loop&&previousPosition!=null&&s.positionUs!=null&&s.positionUs!!<previousPosition-10_000)progressClock.seek(s.positionUs!!,SystemClock.elapsedRealtime())
   progressClock.sample(s.generation,s.positionUs,duration,s.paused,s.speed,SystemClock.elapsedRealtime());drawProgress();playButton.text=if(s.paused)"▶ 播放" else "Ⅱ 暂停";speedButton.text=String.format(java.util.Locale.ROOT,"%.2f×",s.speed)
   val names=arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先")
-  val r=s.receipt;val label=if(s.rendererTier>=2)"增强不可用：已恢复原画" else if(s.rendererTier==1&&r!=null&&r[5]>0)"兼容增强（降噪／细节已停用）" else if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==3.0)"源尺寸超出增强预算：保持原画" else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
+  val r=s.receipt;val label=if(s.rendererTier>=2){if(r==null)"正在恢复原画" else if(r[6]==2.0)"视频输出异常：请查看播放诊断" else "原画播放（增强已停用）"} else if(s.rendererTier==1&&r!=null&&r[5]>0)"兼容增强（降噪／细节已停用）" else if(s.hdr)"HDR：SDR增强已旁路" else if(enhancement.bypass)"原画对比（保持选区）" else if(r!=null&&r[6]==0.0)names[r[5].toInt().coerceIn(0,4)] else if(r!=null&&r[6]==3.0)"源尺寸超出增强预算：保持原画" else if(r!=null&&r[6]==2.0)"增强不可用：渲染未通过" else "增强等待渲染回执"
   status.text=s.error?:"${playbackLabel(s.paused,s.speed)} · $label${if(crop!=null)" · 区域增强" else ""}${if(quality>0)" · 负载降级 $quality" else ""} · ${s.width}×${s.height}"
   refreshMath();if(clipPanel.visibility==View.VISIBLE){if(clipRange==null&&duration!=null&&duration>0)clipRange=ClipRange(0,duration);updateClip()}
   if(s.paused)showControls(true)else if(wasPaused&&controls){handler.removeCallbacks(hide);handler.postDelayed(hide,3000)}

@@ -49,5 +49,9 @@ subprocess.run(['ffmpeg','-hide_banner','-loglevel','error',
  '-filter_complex','[0:v][1:v][2:v]concat=n=3:v=1:a=0[v]','-map','[v]','-c:v','libx264','-pix_fmt','yuv420p','-crf','12','-g','30','-y',str(evd/'roi-scenes.mp4')],check=True)
 (evd/'roi-fixture.sha256').write_text(hashlib.sha256((evd/'roi-scenes.mp4').read_bytes()).hexdigest())
 (evd/'fixture.sha256').write_text(hashlib.sha256((evd/'baseline.mp4').read_bytes()).hexdigest())
+for codec,pixels,name in [('libx264','yuv420p','hd-h264.mp4'),('libx265','yuv420p10le','hd-hevc10.mp4')]:
+ command=['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=1920x1080:rate=24:duration=4','-vf','format=rgb24,colorchannelmixer=rr=0.18:gg=0.18:bb=0.18,format='+pixels,'-c:v',codec,'-preset','ultrafast','-crf','24']
+ if codec=='libx265':command+=['-x265-params','pools=2:frame-threads=1:log-level=error']
+ subprocess.run(command+['-y',str(evd/name)],check=True)
 shutil.copyfile(source/'dependencies-lock.json',ev/'dependencies-lock.json')
 print('Prepared native and fixture:',arch)
