@@ -23,3 +23,5 @@
 同一 run 的 API 29 显示检查暴露另一条故障：所有系统视频区域为 RGB 0，内核截图和 ROI 像素验证仍正常；HWUI 反复记录 `dequeueBuffer failed -110` / `reserveNext failed -2147483648`，Android 窗口的控件画面亦停滞。这确认“内核产出帧”不足以证明真正显示。将显示容器从 TextureView 改回固定官方 mpv-android 使用的 SurfaceView，视频直接进入独立 Surface，不再经过 HWUI 的外部纹理消费路径；ROI 和控制条继续作为 Android View 覆盖。SurfaceHolder 拥有 Surface，应用不自行 release；surfaceDestroyed 返回前由串行 worker 完成 mpv 终止屏障。具体 HWUI 故障机制及与用户华为设备是否相同仍未确认，以新构建的 API 29 实际窗口结果检验此修复。
 
 独立审查未发现 SurfaceView 补丁明确阻塞，建议补充 Surface 重建验证。实际测试按系统 Home 后返回，要求 Surface 回执代次变化、位置保持且系统窗口重新显示视频；该局部检查不替代完整生命周期压力测试。
+
+run `37148205602`：API 35 六项通过；API 29 的系统视频原画/增强、1080p 两种编码、ROI、故障恢复、进度对象和导出检查通过，剩余一项因 MediaCodec 初始化失败并真实回退软件解码而超时。日志为 `Failed to getCodecNameByType(video/avc, 8)` / `Could not open codec`，不能把软件回退称为硬件解码通过。同时部分完整窗口显示控件仍滞留初始画面并保留 HWUI 错误，因此进度对象更新仍不足以证明进度已显示。播放器 Activity 改用软件 Canvas 绘制简单控件和 ROI，视频仍在独立 Surface 中使用原生 GLES GPU；新增系统截图中实际进度滑块向前移动检查。硬件复制不可用时状态明确显示软件回退；API 29 测试要求真实 codec 失败证据和可见软件画面，API 35 仍必须使用实际复制硬件后端，分别记录能力，不从 API 版本推断真实华为能力。

@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.CountDownLatch
 
 data class Track(val id:Int,val type:String,val title:String,val selected:Boolean,val ffIndex:Int?)
-data class PlayerState(val generation:Long=0,val positionUs:Long?=null,val durationUs:Long?=null,val paused:Boolean=true,val speed:Double=1.0,val width:Int=0,val height:Int=0,val rotation:Int=0,val sar:Double=1.0,val seekable:Boolean=false,val decoder:String="尚未打开",val hdr:Boolean=false,val tracks:List<Track> = emptyList(),val receipt:DoubleArray?=null,val error:String?=null,val dropped:Long?=null,val outputFrames:Long?=null,val sourceRect:RoiRect?=null,val rendererTier:Int=0,val decoderMode:String="no",val videoNotice:String?=null)
+data class PlayerState(val generation:Long=0,val positionUs:Long?=null,val durationUs:Long?=null,val paused:Boolean=true,val speed:Double=1.0,val width:Int=0,val height:Int=0,val rotation:Int=0,val sar:Double=1.0,val seekable:Boolean=false,val decoder:String="尚未打开",val hdr:Boolean=false,val tracks:List<Track> = emptyList(),val receipt:DoubleArray?=null,val error:String?=null,val dropped:Long?=null,val outputFrames:Long?=null,val sourceRect:RoiRect?=null,val rendererTier:Int=0,val decoderMode:String="no",val videoNotice:String?=null,val decoderFallback:Boolean=false)
 /** All native calls, including teardown, are serialized on one process-wide worker. */
 class PlayerSession(private val context:Context,private val callback:(PlayerState)->Unit) {
  companion object {private val thread=HandlerThread("LumaView-player").apply{start()};private val worker=Handler(thread.looper);private val serial=AtomicLong()}
@@ -19,7 +19,8 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  private var input:ReadLease?=null;private var surface:Surface?=null
  private var surfaceWidth=1;private var surfaceHeight=1;private var engineEpoch=0L
  private var rendererTier=0;private var videoNotice:String?=null
- private var decoderMode=context.getSharedPreferences("playback",0).getString("decoder","no").takeIf{it=="no"||it=="mediacodec-copy"}?:"no"
+ @Volatile private var decoderMode=context.getSharedPreferences("playback",0).getString("decoder","no").takeIf{it=="no"||it=="mediacodec-copy"}?:"no"
+ @Volatile private var hardwareAttemptFailed=false
  private var generation=0L;private var surfaceGeneration=0L;private var revision=0L;private var request=0L
  private var settings=EnhanceSettings();private var crop:RoiRect?=null;private var rotation=0
  private var error:String?=null;private var resumeUs=0L;private var resumePaused=false;private var resumeSpeed=1.0
@@ -27,6 +28,9 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  private var loop:ClipRange?=null;private var seekResume:Boolean?=null;private var lastTrackRead=0L;private var trackCache=emptyList<Track>()
  private val logLines=ArrayDeque<String>()
  private val logObserver=object:MPVLib.LogObserver {override fun logMessage(prefix:String,level:Int,text:String){
+  // hwdec-current remains "no" while a switch is pending. Declare fallback
+  // only after this attempt reports an actual video codec failure.
+  if(decoderMode=="mediacodec-copy"&&((prefix=="vd"&&text.contains("Could not open codec"))||(prefix=="ffmpeg/video"&&text.contains("failed to start"))))hardwareAttemptFailed=true
   if(level<=30||text.contains("GL_VERSION")||text.contains("GL_RENDERER")||text.contains("GL_VENDOR")||text.contains("Using hardware decoding")){synchronized(logLines){if(logLines.size>=100)logLines.removeFirst();logLines.add("$prefix: ${text.take(320)}")}}
  }}
  private val observer=object:MPVLib.EventObserver {
@@ -64,7 +68,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   val lease=input?:return;val target=surface?:return
   for(name in listOf("mobile","compatible")){val shader=File(context.filesDir,"$name.glsl");context.assets.open("lvm/$name.glsl").use{src->shader.outputStream().use{src.copyTo(it)}}}
   val shader=File(context.filesDir,if(rendererTier==1)"compatible.glsl" else "mobile.glsl")
-  engineEpoch=serial.incrementAndGet();MPVLib.create(context.applicationContext);created=true
+  hardwareAttemptFailed=false;engineEpoch=serial.incrementAndGet();MPVLib.create(context.applicationContext);created=true
   try {
   val options=linkedMapOf("config" to "no","load-scripts" to "no","autoload-files" to "no","ytdl" to "no","load-auto-profiles" to "no","osc" to "no","input-default-bindings" to "no","osd-level" to "0","vo" to "gpu","gpu-context" to "android","opengl-es" to "yes","hwdec" to decoderMode,"fbo-format" to "rgba8","android-surface-size" to "${surfaceWidth}x$surfaceHeight","ao" to "audiotrack,opensles","video-sync" to "audio","scale" to "bilinear","dscale" to "bilinear","cscale" to "bilinear","interpolation" to "no","deband" to "no","gpu-shader-cache-dir" to File(context.cacheDir,"shader-cache").absolutePath,"demuxer-max-bytes" to "33554432","demuxer-max-back-bytes" to "16777216","keep-open" to "yes","idle" to "yes","force-window" to "yes","pause" to "yes","volume" to "100","sub-auto" to "no","audio-file-auto" to "no","glsl-shaders" to if(rendererTier<2)shader.absolutePath else "")
   options.forEach{(k,v)->val rc=MPVLib.setOptionString(k,v);check(rc>=0){"内核选项不可用：$k ($rc)"}}
@@ -112,7 +116,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  }}
  private fun submit(reset:Boolean){request++;val effective=if(rendererTier>=2)settings.copy(bypass=true)else settings;val rc=NativeStage.submit(effective.values(),generation,surfaceGeneration,revision,request,reset);if(rc!=0)error="增强参数提交失败 ($rc)"}
  /** Reconfigure decoding without abandoning the Surface or resetting the timeline. */
- fun decoder(value:String){safe{require(value=="no"||value=="mediacodec-copy");decoderMode=value;context.getSharedPreferences("playback",0).edit().putString("decoder",value).apply();if(initialized){MPVLib.setPropertyString("hwdec",value);submit(true)}}}
+ fun decoder(value:String){safe{require(value=="no"||value=="mediacodec-copy");hardwareAttemptFailed=false;decoderMode=value;context.getSharedPreferences("playback",0).edit().putString("decoder",value).apply();if(initialized){MPVLib.setPropertyString("hwdec",value);submit(true)}}}
  private fun recoverRenderer(){
   if(rendererTier>=2)return
   rendererTier++
@@ -145,7 +149,9 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   val sourceRect=RoiRect(cx,cy,cx+cw,cy+ch).clamped(w,h)
   val trc=text("video-params/gamma")?:"";var receipt=if(initialized)NativeStage.receipt()?.takeIf{it.size>=14&&it[0]==generation.toDouble()&&it[1]==surfaceGeneration.toDouble()&&it[2]==revision.toDouble()&&it[3]==request.toDouble()}else null
   if(receipt?.get(6)==2.0&&rendererTier<2){recoverRenderer();receipt=null}
-  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)%360+360)%360,par,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / ${text("hwdec-current")?:"未知"}",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong(),sourceRect,rendererTier,decoderMode,videoNotice)
+  val activeDecoder=text("hwdec-current")?:"未知"
+  val decoderFallback=decoderMode=="mediacodec-copy"&&hardwareAttemptFailed&&activeDecoder=="no"
+  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)%360+360)%360,par,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / $activeDecoder",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong(),sourceRect,rendererTier,decoderMode,videoNotice,decoderFallback)
   state=s;ui.post{if(!closed&&s.generation==generation)callback(s)}
  }
 }

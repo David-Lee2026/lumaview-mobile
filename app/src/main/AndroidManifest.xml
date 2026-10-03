@@ -6,7 +6,7 @@
   <activity android:name="org.lumaview.mobile.ui.LibraryActivity" android:exported="true">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
   </activity>
-  <activity android:name="org.lumaview.mobile.ui.PlayerActivity" android:exported="true" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" android:enableOnBackInvokedCallback="false">
+  <activity android:name="org.lumaview.mobile.ui.PlayerActivity" android:hardwareAccelerated="false" android:exported="true" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" android:enableOnBackInvokedCallback="false">
    <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><data android:scheme="content"/><data android:mimeType="video/*"/></intent-filter>
   </activity>
  </application>

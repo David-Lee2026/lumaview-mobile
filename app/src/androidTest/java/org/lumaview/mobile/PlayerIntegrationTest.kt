@@ -51,6 +51,14 @@ class PlayerIntegrationTest {
   val out=File(evidence,"$name.png");out.outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle();screen.recycle();return out
  }
  private fun mean(file:File):Double {val bitmap=BitmapFactory.decodeFile(file.path)?:error("PNG decode");val pixels=IntArray(bitmap.width*bitmap.height);bitmap.getPixels(pixels,0,bitmap.width,0,0,bitmap.width,bitmap.height);bitmap.recycle();return pixels.sumOf{.2126*((it shr 16)and 255)+.7152*((it shr 8)and 255)+.0722*(it and 255)}/pixels.size}
+ private fun displayedProgressRight(window:File):Int {
+  val bitmap=BitmapFactory.decodeFile(window.path)?:error("window PNG decode");val bar=bounds(value("seek") as View);var right=-1
+  for(y in bar.top until bar.bottom.coerceAtMost(bitmap.height))for(x in bar.left until bar.right.coerceAtMost(bitmap.width)){
+   val p=bitmap.getPixel(x,y);val r=(p shr 16)and 255;val g=(p shr 8)and 255;val b=p and 255
+   if(g>140&&b>100&&g-r>40&&b-r>30)right=maxOf(right,x)
+  }
+  bitmap.recycle();assertTrue("progress thumb must actually be visible in the system window",right>=0);return right
+ }
  @Test fun realTouchRenderingAndExports(){
   val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{a->input.outputStream().use{a.copyTo(it)}}
   activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -121,9 +129,11 @@ class PlayerIntegrationTest {
     activity.javaClass.getDeclaredMethod("render",org.lumaview.mobile.player.PlayerState::class.java).apply{isAccessible=true}.invoke(activity,session.state.copy(positionUs=null))
     assertTrue("a missing playback sample must not reset the thumb",bar.progress>=previous)
    }
+   screenSnapshot("screen-progress-start");val firstPixel=displayedProgressRight(File(evidence,"screen-progress-start-window.png"))
    val samples=org.json.JSONArray();var last=-1;var top:Int?=null
    repeat(30){Thread.sleep(50);inst.runOnMainSync{val bar=value("seek") as SeekBar;val location=IntArray(2);bar.getLocationOnScreen(location);assertTrue("live progress must not jitter backward",bar.progress>=last);if(top!=null)assertEquals("progress row must not shake vertically",top!!,location[1]);last=bar.progress;top=location[1];samples.put(JSONObject().put("progress",last).put("top",top))}}
-   File(evidence,"PROGRESS_RESULT.json").writeText(JSONObject().put("missingSampleKeptPosition",true).put("samples",samples).put("physicalDevice",false).toString(2))
+   screenSnapshot("screen-progress-end");val lastPixel=displayedProgressRight(File(evidence,"screen-progress-end-window.png"));assertTrue("displayed progress must move forward",lastPixel>firstPixel+20)
+   File(evidence,"PROGRESS_RESULT.json").writeText(JSONObject().put("missingSampleKeptPosition",true).put("samples",samples).put("displayedThumbStartX",firstPixel).put("displayedThumbEndX",lastPixel).put("physicalDevice",false).toString(2))
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
  @Test fun decoderSwitchesAndExposureSettingsReachTheDisplayedWindow(){
@@ -135,7 +145,16 @@ class PlayerIntegrationTest {
    waitFor("software compatibility decode"){(session.state.positionUs?:0)>1_000_000&&session.state.decoder.endsWith("/ no")&&session.state.receipt?.get(6)==0.0}
    session.pause(true);waitFor("compatibility pause"){session.state.paused};val software=mean(screenSnapshot("screen-software"));assertTrue(software>4.0)
    fun choose(label:String){tap("解码设置");val nodes=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText(label);assertTrue(nodes.isNotEmpty());assertTrue(nodes[0].performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(500)}
-   choose("硬件加速（复制解码）");waitFor("copy-back decoder"){session.state.decoder.endsWith("/ mediacodec-copy")&&session.state.receipt?.get(6)==0.0};val hardware=mean(screenSnapshot("screen-hardware-copy"));assertTrue(hardware>4.0)
+   val decoderRequest=session.state.receipt!![3]
+   choose("硬件加速（复制解码）");waitFor("copy-back decoder or explicit fallback"){session.state.decoderMode=="mediacodec-copy"&&session.state.receipt?.let{it[3]>decoderRequest&&it[6]==0.0}==true&&(session.state.decoder.endsWith("/ mediacodec-copy")||session.state.decoderFallback)}
+   val hardwareAvailable=session.state.decoder.endsWith("/ mediacodec-copy")
+   if(!hardwareAvailable){
+    assertEquals("API35 must exercise actual copy-back decoding",29,android.os.Build.VERSION.SDK_INT)
+    val logged=CountDownLatch(1);var diagnostic="";session.diagnostic{diagnostic=it;logged.countDown()};assertTrue(logged.await(5,TimeUnit.SECONDS))
+    assertTrue("fallback requires actual native codec failure evidence",diagnostic.contains("Could not open codec")||diagnostic.contains("failed to start"))
+    waitFor("decoder fallback notice"){var text="";inst.runOnMainSync{text=(value("status") as TextView).text.toString()};text.contains("硬件不可用，软件解码")}
+   }
+   val hardware=mean(screenSnapshot("screen-hardware-copy"));assertTrue(hardware>4.0)
    choose("兼容播放（软件解码，默认）");waitFor("return to software decode"){session.state.decoder.endsWith("/ no")&&session.state.receipt?.get(6)==0.0}
    val before=mean(screenSnapshot("screen-exposure-before"));val request=session.state.receipt!![3]
    tap("画面增强");val bars=ArrayList<AccessibilityNodeInfo>()
@@ -153,7 +172,7 @@ class PlayerIntegrationTest {
    waitFor("holder recreated after returning"){var focus=false;inst.runOnMainSync{focus=activity.hasWindowFocus()};focus&&session.state.generation==oldGeneration&&session.state.receipt?.let{it[1]!=oldSurface&&it[6]==0.0}==true&&kotlin.math.abs((session.state.positionUs?:-10_000_000)-oldPosition)<500_000}
    assertTrue("return must keep playback position",kotlin.math.abs(session.state.positionUs!!-oldPosition)<500_000)
    val returned=mean(screenSnapshot("screen-after-home-return"));assertTrue("recreated holder must display video",returned>4.0)
-   File(evidence,"DISPLAY_RESULT.json").writeText(JSONObject().put("api",android.os.Build.VERSION.SDK_INT).put("softwareLuma",software).put("hardwareCopyLuma",hardware).put("beforeExposureLuma",before).put("afterExposureLuma",after).put("returnedLuma",returned).put("surfaceRecreated",true).put("settingsVisible",true).put("physicalDevice",false).toString(2))
+   File(evidence,"DISPLAY_RESULT.json").writeText(JSONObject().put("api",android.os.Build.VERSION.SDK_INT).put("softwareLuma",software).put("hardwareCopyLuma",hardware).put("hardwareCopyAvailable",hardwareAvailable).put("hardwareSelectionUsedSoftwareFallback",!hardwareAvailable).put("beforeExposureLuma",before).put("afterExposureLuma",after).put("returnedLuma",returned).put("surfaceRecreated",true).put("settingsVisible",true).put("physicalDevice",false).toString(2))
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
  @Test fun highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement(){
