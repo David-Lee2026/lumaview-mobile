@@ -19,3 +19,5 @@
 修复 run `37146650466` 的 Android 35 验证通过了 6 项中的 5 项，剩余曝光设置实际窗口检查失败：暂停帧在 +0.5 EV 设置前后的 PNG 完全相同。代码确认曝光时序适应使用视频 PTS 差值，暂停时 dt=0，而手动曝光变化没有清除曝光历史。现对手动曝光、模式、原画比较切换和解除曝光锁定重置曝光历史；时间连续播放时保留原有时序适应。回归同时要求 UI 参数实际提交为 +0.5 EV，且暂停画面的亮度真实改变。
 
 已锁定曝光时，原画比较切换保留曝光历史，避免仍显示“锁定”但比较返回后重新计算曝光。
+
+同一 run 的 API 29 显示检查暴露另一条故障：所有系统视频区域为 RGB 0，内核截图和 ROI 像素验证仍正常；HWUI 反复记录 `dequeueBuffer failed -110` / `reserveNext failed -2147483648`，Android 窗口的控件画面亦停滞。这确认“内核产出帧”不足以证明真正显示。将显示容器从 TextureView 改回固定官方 mpv-android 使用的 SurfaceView，视频直接进入独立 Surface，不再经过 HWUI 的外部纹理消费路径；ROI 和控制条继续作为 Android View 覆盖。SurfaceHolder 拥有 Surface，应用不自行 release；surfaceDestroyed 返回前由串行 worker 完成 mpv 终止屏障。具体 HWUI 故障机制及与用户华为设备是否相同仍未确认，以新构建的 API 29 实际窗口结果检验此修复。

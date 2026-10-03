@@ -40,7 +40,7 @@ jni_func(void, detachSurface) {
 void release_surfaces(JNIEnv *env) {
     if(surface){env->DeleteGlobalRef(surface);surface=nullptr;}
 }
-// A retained TextureView Surface is released only after mpv_terminate_destroy joins VO.
+// A retained holder Surface reference is released after mpv_terminate_destroy joins VO.
 extern "C" JNIEXPORT void JNICALL Java_org_lumaview_mobile_player_NativeStage_releaseSurfaceAfterShutdown(JNIEnv *env,jobject) {
     if (!g_mpv)release_surfaces(env);
 }

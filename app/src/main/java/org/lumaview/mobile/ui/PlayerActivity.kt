@@ -3,7 +3,6 @@ package org.lumaview.mobile.ui
 import android.app.*
 import android.content.*
 import android.content.pm.ActivityInfo
-import android.graphics.SurfaceTexture
 import android.graphics.Typeface
 import android.text.TextUtils
 import android.media.AudioManager
@@ -22,9 +21,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.*
 
-class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
+class PlayerActivity:Activity(),SurfaceHolder.Callback {
  private lateinit var session:PlayerSession;private lateinit var access:DocumentAccess;private lateinit var audio:AudioManager
- private lateinit var root:LinearLayout;private lateinit var video:TextureView;private lateinit var overlay:RoiOverlayView;private lateinit var videoFrame:FrameLayout
+ private lateinit var root:LinearLayout;private lateinit var video:SurfaceView;private lateinit var overlay:RoiOverlayView;private lateinit var videoFrame:FrameLayout
  private lateinit var top:HorizontalScrollView;private lateinit var bottom:LinearLayout;private lateinit var selectionRow:LinearLayout;private lateinit var clipPanel:LinearLayout
  private lateinit var seek:SeekBar;private lateinit var volume:SeekBar;private lateinit var time:TextView;private lateinit var status:TextView;private lateinit var playButton:Button;private lateinit var speedButton:Button;private lateinit var lockButton:Button;private lateinit var applyButton:Button
  private lateinit var timeline:ClipTimelineView;private lateinit var clipText:TextView
@@ -63,7 +62,7 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   top=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false};val tools=row();top.addView(tools)
   tools.addView(button("← 文件"){finish()});tools.addView(button("画面增强"){enhancePanel()});tools.addView(button("区域放大"){beginRoi()});tools.addView(button("全画面"){resetView()});tools.addView(button("片段剪辑"){toggleClip()});tools.addView(button("旋转"){userRotation=(userRotation+90)%360;crop=null;overlay.current=null;enhancement=enhancement.copy(locked=false);session.viewport(null,userRotation);refreshMath()});tools.addView(button("解码设置"){decoderPanel()});tools.addView(button("更多"){more()});root.addView(top,LinearLayout.LayoutParams(-1,48.dp))
   selectionRow=row();selectionRow.addView(text("选框后点应用"),LinearLayout.LayoutParams(0,48.dp,1f));applyButton=button("应用"){val r=overlay.apply();if(r!=null){crop=r;session.viewport(r,userRotation);session.pause(priorPause);selectionRow.visibility=View.GONE;refreshMath()}};selectionRow.addView(applyButton);selectionRow.addView(button("取消"){overlay.cancel();selectionRow.visibility=View.GONE;session.pause(priorPause);refreshMath()});selectionRow.visibility=View.GONE;root.addView(selectionRow)
-  videoFrame=FrameLayout(this).apply{setBackgroundColor(0xff000000.toInt())};video=TextureView(this).apply{surfaceTextureListener=this@PlayerActivity};videoFrame.addView(video,FrameLayout.LayoutParams(-1,-1));overlay=RoiOverlayView(this);videoFrame.addView(overlay,FrameLayout.LayoutParams(-1,-1));root.addView(videoFrame,LinearLayout.LayoutParams(-1,0,1f))
+  videoFrame=FrameLayout(this).apply{setBackgroundColor(0xff000000.toInt())};video=SurfaceView(this).apply{holder.addCallback(this@PlayerActivity)};videoFrame.addView(video,FrameLayout.LayoutParams(-1,-1));overlay=RoiOverlayView(this);videoFrame.addView(overlay,FrameLayout.LayoutParams(-1,-1));root.addView(videoFrame,LinearLayout.LayoutParams(-1,0,1f))
   status=text("正在打开视频…",12f).apply{isSingleLine=true;ellipsize=TextUtils.TruncateAt.END};root.addView(status)
   clipPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff172437.toInt());visibility=View.GONE}
   clipText=text("A — B",12f);clipPanel.addView(clipText);timeline=ClipTimelineView(this);clipPanel.addView(timeline,LinearLayout.LayoutParams(-1,84.dp))
@@ -182,10 +181,9 @@ class PlayerActivity:Activity(),TextureView.SurfaceTextureListener {
   if(requestCode==3&&resultCode==RESULT_OK){data?.data?.let{u->access.rememberGrant(u,data.flags);access.openRead(u){r->r.onSuccess{session.externalSubtitle(it)}.onFailure{message(it.message?:"字幕不可读")}}};return}
   if(requestCode==4){pickingDestination=false;val dest=data?.data;val temp=temporary;if(resultCode!=RESULT_OK||dest==null||temp==null){temp?.delete();temporary=null;busy=false;return};startProgress("写入新文件");val stop=cancel;work.execute{val r=runCatching{OutputTransaction.saveNew(this,temp,dest,uri,stop){p->handler.post{dialog?.progress=(p*100).toInt()}}};handler.post{if(isDestroyed){temp.delete();return@post};closeProgress();r.onSuccess{busy=false;temporary=null;temp.delete();message("已保存到系统选择的位置。\n$outputSummary")}.onFailure{busy=true;temporary=temp;AlertDialog.Builder(this).setTitle("保存未完成").setMessage("${it.message}\n完整片段仍在应用暂存区，可重新选择新文件位置。").setPositiveButton("重新选择位置"){_,_->cancel=AtomicBoolean(false);chooseDestination()}.setNegativeButton("删除暂存"){_,_->temp.delete();temporary=null;busy=false}.setOnCancelListener{temp.delete();temporary=null;busy=false}.show()}}}}
  }
- override fun onSurfaceTextureAvailable(st:SurfaceTexture,w:Int,h:Int){session.attach(st,w,h)}
- override fun onSurfaceTextureSizeChanged(st:SurfaceTexture,w:Int,h:Int){session.attach(st,w,h);refreshMath()}
- override fun onSurfaceTextureDestroyed(st:SurfaceTexture):Boolean {session.detach(st);return false}
- override fun onSurfaceTextureUpdated(st:SurfaceTexture){}
+ override fun surfaceCreated(holder:SurfaceHolder){session.attach(holder.surface,holder.surfaceFrame.width(),holder.surfaceFrame.height())}
+ override fun surfaceChanged(holder:SurfaceHolder,format:Int,w:Int,h:Int){session.attach(holder.surface,w,h);refreshMath()}
+ override fun surfaceDestroyed(holder:SurfaceHolder){session.detach(holder.surface)}
  override fun onPause(){super.onPause();if(::session.isInitialized){session.pause(true);uri?.let{s.positionUs?.let{pos->getSharedPreferences("history",0).edit().putLong("position:$it",pos).apply()}}}}
  override fun onStop(){super.onStop();if(busy&&!pickingDestination&&!isChangingConfigurations)cancelJob()}
  override fun onDestroy(){openLeaseId?.let{access.cancel(it)};openRequest++;handler.removeCallbacksAndMessages(null);if(::session.isInitialized)session.close();if(busy)cancelJob();closeProgress();work.shutdown();super.onDestroy()}
