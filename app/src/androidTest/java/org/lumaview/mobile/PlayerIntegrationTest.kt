@@ -126,9 +126,10 @@ class PlayerIntegrationTest {
  }
  @Test fun progressDoesNotJumpToZeroForMissingPositionSample(){
   val input=File(context.filesDir,"baseline.mp4");inst.context.assets.open("baseline.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  context.getSharedPreferences("history",0).edit().putLong("position:${Uri.fromFile(input)}",0).commit()
   activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
   try{
-   waitFor("progress playback"){(session.state.positionUs?:0)>1_000_000&&session.state.durationUs!=null}
+   waitFor("progress playback"){(session.state.positionUs?:0) in 1_000_000..4_000_000&&session.state.durationUs!=null&&!session.state.paused}
    // Keep the measured row visible through the application's real menu;
    // normal auto-hide may otherwise occur between the two screenshots.
    tap("更多");val visible=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("控制栏常显／自动隐藏");assertTrue(visible.isNotEmpty());assertTrue(visible[0].performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(300)
@@ -234,11 +235,32 @@ class PlayerIntegrationTest {
   try{
    waitFor("CPU portrait buffer posted"){session.state.output=="lvm-android"&&session.state.rotation==90&&session.state.receipt?.let{it[6]==0.0&&it[13]>0}==true}
    val pause=bounds(value("playButton") as View);assertTrue("portrait pause must remain at least 48dp wide",pause.width()>=48*context.resources.displayMetrics.density)
+   // The 4-second fixture may end during first-load warmup. Start the real
+   // pause interaction at a known point, rather than clicking a Play label.
+   session.seek(750_000);session.pause(false)
+   waitFor("portrait playback ready for pause"){var shown=false;inst.runOnMainSync{shown=(value("playButton") as TextView).text.toString()=="Ⅱ 暂停"};shown&&!session.state.paused&&(session.state.positionUs?:0) in 700_000..2_500_000}
    tap("Ⅱ 暂停");waitFor("visible portrait pause works"){session.state.paused}
    fun frame(settings:EnhanceSettings,name:String):Double{val request=session.state.receipt!![3];session.enhance(settings,true);waitFor("CPU setting $name"){session.state.receipt?.let{it[3]>request&&it[6]==0.0&&it[5]==(if(settings.bypass)0 else settings.mode).toDouble()}==true};return mean(screenSnapshot(name))}
    val original=frame(EnhanceSettings(bypass=true),"cpu-portrait-original");assertTrue("CPU original must reach screen",original>4)
    val balanced=frame(EnhanceSettings(),"cpu-portrait-balanced");assertTrue("CPU enhancement must reach screen",balanced>original*1.12)
    val extreme=frame(EnhanceSettings(mode=3),"cpu-portrait-extreme");assertTrue("mode must change actual pixels",extreme>balanced*1.02)
+   fun dialogNode(label:String)=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText(label).firstOrNull{it.text?.toString()==label}?:error("dialog control absent: $label")
+   fun dialogPress(label:String){assertTrue(dialogNode(label).performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(350)}
+   val compareText="原画对比（选区与倍数不变）";val lockText="锁定当前曝光（重选区域后解除）"
+   frame(EnhanceSettings(),"cpu-before-panel-state")
+   tap("画面增强");dialogPress(compareText);dialogPress(lockText);dialogPress("完成")
+   waitFor("comparison checkbox applied"){session.state.receipt?.let{it[5]==0.0&&it[6]==0.0}==true}
+   assertTrue("comparison checkbox shows original pixels",kotlin.math.abs(mean(screenSnapshot("cpu-ui-original"))-original)<original*.1)
+   tap("画面增强");inst.waitForIdleSync();Thread.sleep(350)
+   inst.runOnMainSync{val settings=value("enhancement") as EnhanceSettings;assertTrue("opening panel must preserve comparison",settings.bypass);assertTrue("opening panel must preserve exposure lock",settings.locked)}
+   assertTrue(dialogNode(compareText).isChecked);assertTrue(dialogNode(lockText).isChecked)
+   var spinner:AccessibilityNodeInfo?=null
+   fun findSpinner(node:AccessibilityNodeInfo){if(node.className?.toString()=="android.widget.Spinner")spinner=node;for(i in 0 until node.childCount)node.getChild(i)?.let{findSpinner(it)}}
+   findSpinner(inst.uiAutomation.rootInActiveWindow);assertNotNull(spinner);assertTrue(spinner!!.performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(350);dialogPress("弱光增强")
+   waitFor("mode selected through UI"){session.state.receipt?.let{it[5]==2.0&&it[6]==0.0}==true}
+   assertFalse(dialogNode(compareText).isChecked);assertFalse(dialogNode(lockText).isChecked)
+   dialogPress("完成");val uiModeLuma=mean(screenSnapshot("cpu-ui-mode"));assertTrue("UI mode changes displayed pixels",uiModeLuma>original*1.12)
+   tap("画面增强");dialogPress("重置");waitFor("UI enhancement reset"){session.state.receipt?.get(5)==1.0}
    frame(EnhanceSettings(),"cpu-before-ui-settings")
    val uiRequest=session.state.receipt!![3];tap("画面增强")
    val settingsBars=ArrayList<AccessibilityNodeInfo>();fun visit(node:AccessibilityNodeInfo){if(node.className?.toString()=="android.widget.SeekBar")settingsBars.add(node);for(i in 0 until node.childCount)node.getChild(i)?.let{visit(it)}};visit(inst.uiAutomation.rootInActiveWindow);assertTrue(settingsBars.size>=3)
@@ -253,7 +275,7 @@ class PlayerIntegrationTest {
    val gray=BitmapFactory.decodeFile(File(evidence,"cpu-portrait-gray.png").path);var chroma=0
    for(y in 0 until gray.height step 8)for(x in 0 until gray.width step 8){val p=gray.getPixel(x,y);chroma=maxOf(chroma,kotlin.math.abs(((p shr 16)and 255)-((p shr 8)and 255)),kotlin.math.abs((p and 255)-((p shr 8)and 255)))};gray.recycle();assertTrue("saturation zero must be gray",chroma<=2)
    frame(EnhanceSettings(),"cpu-portrait-reset")
-   val oldPosition=session.state.positionUs!!;session.output("gpu");waitFor("GPU comparison output"){session.state.output=="gpu"&&session.state.receipt?.get(6)==0.0&&session.state.paused};assertTrue(mean(screenSnapshot("gpu-portrait-comparison"))>4)
+   val oldPosition=session.state.positionUs!!;val oldSurface=session.state.receipt!![1];session.output("gpu");waitFor("GPU comparison output"){session.state.output=="gpu"&&session.state.receipt?.get(6)==0.0&&session.state.paused};assertTrue(mean(screenSnapshot("gpu-portrait-comparison"))>4);assertNotEquals(oldSurface,session.state.receipt!![1])
    assertTrue("output switch preserves position",kotlin.math.abs(session.state.positionUs!!-oldPosition)<200_000)
    session.output("cpu");waitFor("CPU comparison restored"){session.state.output=="lvm-android"&&session.state.receipt?.get(6)==0.0&&session.state.paused};assertTrue(mean(screenSnapshot("cpu-portrait-restored"))>4)
    val rotatedRoi=RoiRect(480.0,270.0,1440.0,810.0);session.viewport(rotatedRoi)
@@ -262,7 +284,7 @@ class PlayerIntegrationTest {
    session.viewport(null,90);waitFor("CPU manual rotation combines with metadata"){session.state.rotation==180&&session.state.receipt?.get(6)==0.0};assertTrue(mean(screenSnapshot("cpu-manual-rotation"))>4)
    session.viewport(null,0);waitFor("CPU metadata rotation restored"){session.state.rotation==90&&session.state.receipt?.get(6)==0.0}
    val logged=CountDownLatch(1);var diagnostic="";session.diagnostic{diagnostic=it;logged.countDown()};assertTrue(logged.await(5,TimeUnit.SECONDS));assertTrue(diagnostic.contains("first buffer posted successfully"));File(evidence,"CPU_DIAGNOSTIC.txt").writeText(diagnostic)
-   File(evidence,"CPU_PORTRAIT_RESULT.json").writeText(JSONObject().put("output","lvm-android").put("originalLuma",original).put("balancedLuma",balanced).put("extremeLuma",extreme).put("manualEvLuma",exposure).put("contrastLowLuma",contrastLow).put("contrastHighLuma",contrastHigh).put("maxGrayChroma",chroma).put("pauseWidthPixels",pause.width()).put("rotation",90).put("physicalDevice",false).toString(2))
+   File(evidence,"CPU_PORTRAIT_RESULT.json").writeText(JSONObject().put("output","lvm-android").put("originalLuma",original).put("balancedLuma",balanced).put("extremeLuma",extreme).put("manualEvLuma",exposure).put("contrastLowLuma",contrastLow).put("contrastHighLuma",contrastHigh).put("maxGrayChroma",chroma).put("pauseWidthPixels",pause.width()).put("rotation",90).put("panelReopenPreservesComparisonAndLock",true).put("modeSelectedThroughUi",2).put("uiModeLuma",uiModeLuma).put("physicalDevice",false).toString(2))
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000);context.getSharedPreferences("playback",0).edit().remove("output").commit();inst.uiAutomation.executeShellCommand("wm size 1280x800").close();inst.uiAutomation.executeShellCommand("wm density 160").close();Thread.sleep(1500)}
  }
  @Test fun compatibleOutputSupportsRoiAndExports(){

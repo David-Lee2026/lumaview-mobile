@@ -51,3 +51,9 @@ run `37149864931`：ARM64 构建成功、13 项单测通过；API29 六项集成
 第二轮run37171065021：APK构建成功，旧包竖屏回归被Android测试签名检查拒绝，尚未运行播放验证，不能计作播放器测试失败。测试APK由新runner签名，与旧下载包签名不同。只对旧包的对比副本用当前测试证书重签名，逐一比较ZIP内所有非签名文件字节并保留原包/副本SHA256，确保程序和原生库未改变，再运行同一竖屏回归。
 
 第三轮run37171585546：ARM64构建及15项单测通过，旧包重签名退出2；之前脚本捕获stderr后没有输出，不能直接断言具体错误。相同旧APK与官方build-tools36 apksigner在本地重签名成功且所有非签名载荷字节一致。AGP32.2.1 AndroidLocations源码确认Android偏好目录优先使用ANDROID_USER_HOME/XDG_CONFIG_HOME，原脚本硬编码user.home/.android不能代表Gradle实际签名路径。现在通过:app:signingReport读取defaultDebug的实际Store，保留子命令错误，并在安装前验证旧副本与新测试APK证书SHA256完全一致。本地相同旧APK验证成功，待CI实际路径与全套测试确认。
+
+第四轮run37172487353：签名路径确认是/home/runner/.config/.android/debug.keystore，读取Gradle实际Store后对照APK证书匹配；旧0.1.1竖屏暂停按钮回归确实失败。API29/35新版各9项中7项通过。API29 CPU原画/增强/曝光/对比度/饱和度到达实际窗口，但CPU切回GPU失败，日志明确BufferQueue connect already connected(cur=2 req=1)及EGL_BAD_ALLOC。公共NDK的CPU窗口锁保持producer连接，复用相同holder给EGL会失败；现切换输出时先join内核，废弃旧Surface、由Activity创建新SurfaceView/holder后再初始化，并要求测试中的Surface代次改变且暂停位置保留。
+
+API35竖屏测试未找到暂停文字：4秒fixture已到keep-open结束状态。进度两幅系统截图也明确显示00:12/00:12、暂停、最后帧11.967秒；测试复用了上一个场景的历史位置。因此测试清除对应历史，从750ms恢复短竖屏素材并等实际暂停按钮文字和正在播放状态；进度测试从零启动并要求位于1–4秒窗口。保留实际屏幕进度移动门槛，不放宽断言。
+
+额外面板复查确认Spinner初始化回调会按旧规则清除bypass/locked，Checkbox仍可能显示选中。新核心回归16项中1项失败（同模式初始化应该保留原画/锁定），selectMode只在模式真正改变时清除标志，面板同步Checkbox后16项通过。竖屏窗口测试增加勾选原画和曝光锁、关闭重开保留状态、通过真实下拉框选弱光模式、核对勾选框及实际像素变化。

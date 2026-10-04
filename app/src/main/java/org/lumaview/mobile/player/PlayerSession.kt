@@ -13,10 +13,11 @@ import java.util.concurrent.CountDownLatch
 data class Track(val id:Int,val type:String,val title:String,val selected:Boolean,val ffIndex:Int?)
 data class PlayerState(val generation:Long=0,val positionUs:Long?=null,val durationUs:Long?=null,val paused:Boolean=true,val speed:Double=1.0,val width:Int=0,val height:Int=0,val rotation:Int=0,val sar:Double=1.0,val seekable:Boolean=false,val decoder:String="尚未打开",val hdr:Boolean=false,val tracks:List<Track> = emptyList(),val receipt:DoubleArray?=null,val error:String?=null,val dropped:Long?=null,val outputFrames:Long?=null,val sourceRect:RoiRect?=null,val rendererTier:Int=0,val decoderMode:String="no",val videoNotice:String?=null,val decoderFallback:Boolean=false,val output:String="gpu")
 /** All native calls, including teardown, are serialized on one process-wide worker. */
-class PlayerSession(private val context:Context,private val callback:(PlayerState)->Unit) {
+class PlayerSession(private val context:Context,private val recreateSurface:()->Unit,private val callback:(PlayerState)->Unit) {
  companion object {private val thread=HandlerThread("LumaView-player").apply{start()};private val worker=Handler(thread.looper);private val serial=AtomicLong()}
  private val ui=Handler(Looper.getMainLooper());private var initialized=false;private var created=false;@Volatile private var closed=false
  private var input:ReadLease?=null;private var surface:Surface?=null
+ private var retiredSurface:Surface?=null
  private var surfaceWidth=0;private var surfaceHeight=0;private var engineEpoch=0L
  private var outputMode=context.getSharedPreferences("playback",0).getString("output","auto")?:"auto"
  private fun selectedOutput()=if(outputMode=="cpu"||(outputMode=="auto"&&listOf(Build.MANUFACTURER,Build.BRAND).any{it.equals("huawei",true)||it.equals("honor",true)}))"lvm-android" else "gpu"
@@ -47,6 +48,8 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  private fun safe(onClosed:()->Unit={},block:()->Unit){worker.post{if(!closed)try{block()}catch(t:Throwable){error=t.message?:t.javaClass.simpleName;publish()}else onClosed()}}
  fun attach(target:Surface,w:Int,h:Int){
   safe {
+   if(target===retiredSurface)return@safe
+   retiredSurface=null
    if(surface!==target){shutdownEngine();surfaceGeneration=serial.incrementAndGet();surface=target}
    if(w<=0||h<=0||!target.isValid)return@safe
    surfaceWidth=w;surfaceHeight=h
@@ -128,7 +131,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   MPVLib.setPropertyString("glsl-shaders",if(rendererTier==1)File(context.filesDir,"compatible.glsl").absolutePath else "")
   submit(true)
  }
- fun output(value:String){safe{require(value in setOf("auto","cpu","gpu"));resumeUs=state.positionUs?:0;resumePaused=state.paused;resumeSpeed=state.speed;shutdownEngine();outputMode=value;rendererTier=0;revision++;videoNotice=null;context.getSharedPreferences("playback",0).edit().putString("output",value).apply();if(input!=null&&surface!=null)initialize()}}
+ fun output(value:String){safe{require(value in setOf("auto","cpu","gpu"));if(value==outputMode)return@safe;resumeUs=state.positionUs?:0;resumePaused=state.paused;resumeSpeed=state.speed;shutdownEngine();outputMode=value;rendererTier=0;revision++;videoNotice=null;error=null;context.getSharedPreferences("playback",0).edit().putString("output",value).apply();retiredSurface=surface;surface=null;publish();ui.post{if(!closed)recreateSurface()}}}
  fun frame(forward:Boolean){safe{if(initialized){MPVLib.setPropertyBoolean("pause",true);MPVLib.command(arrayOf(if(forward)"frame-step" else "frame-back-step"))}}}
  fun selectTrack(type:String,id:Int?){safe{if(initialized)MPVLib.setPropertyString(if(type=="audio")"aid" else "sid",id?.toString()?:"no")}}
  fun externalSubtitle(lease:ReadLease){safe({lease.close()}){if(initialized){ // mpv opens its own file descriptor; retain lease until session end.

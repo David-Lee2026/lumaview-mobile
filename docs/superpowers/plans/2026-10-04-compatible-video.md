@@ -50,3 +50,6 @@
 - Ruling: preserve software Canvas controls because previous API29 HWUI had documented buffer dequeue failures; software VO avoids EGL while retaining SurfaceView ownership. Cost if this does not address the physical failure: further device evidence and presentation fallback will be needed.
 - Native builds and Android validation run in GitHub Actions; no local SDK/emulator, no Huawei connection.
 - Review found automatic scene/PTS reset overriding locked CPU exposure. A dark→bright scene and backward-PTS test failed; explicit reset remains allowed, automatic transitions now preserve a locked exposure. Host suite then passed.
+- Fourth full build established real CPU→EGL BufferQueue API collision. Replace the holder-owned SurfaceView after native teardown, retain paused timestamp and test new Surface generation. Reuse of a producer connected through ANativeWindow_lock is not safe for EGL.
+- Progress screenshots at 12/12 seconds prove the test was resuming the prior scene's EOF; tests now clear input history and use a bounded playing interval. Short portrait fixture is positioned before testing its real pause control.
+- Same-mode panel initialization cleared comparison and exposure lock. Behavioral transition test: 16 tests/1 failure with old copy rule, then16/0 with unchanged selection preserving flags. Actual UI reopen/checkbox/dropdown coverage added.

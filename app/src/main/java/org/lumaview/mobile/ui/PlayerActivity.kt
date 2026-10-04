@@ -43,7 +43,7 @@ class PlayerActivity:Activity(),SurfaceHolder.Callback {
  private fun message(value:String){if(!isFinishing&&!isDestroyed)AlertDialog.Builder(this).setTitle("LumaView").setMessage(value).setPositiveButton("知道了",null).show()}
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState);window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);audio=getSystemService(AUDIO_SERVICE) as AudioManager;volumeControlStream=AudioManager.STREAM_MUSIC
-  access=DocumentAccess(this);session=PlayerSession(this){state->render(state)}
+  access=DocumentAccess(this);session=PlayerSession(this,::recreateVideoSurface){state->render(state)}
   buildUi();handler.post(progressTick)
   val u=intent.data
   if(u==null||u.scheme !in listOf("content","file")){message("请从文件页或系统文件选择器打开视频");startActivity(Intent(this,LibraryActivity::class.java));finish();return}
@@ -114,6 +114,13 @@ class PlayerActivity:Activity(),SurfaceHolder.Callback {
   if(!dragging&&position!=null&&duration!=null&&duration>0)seek.progress=(position*10000.0/duration).roundToInt().coerceIn(0,10000)
   time.text="${formatTime(position)} / ${formatTime(duration)}"
  }
+ private fun recreateVideoSurface(){
+  // A CPU-locked BufferQueue cannot be reconnected to EGL. The session has
+  // already joined native teardown; create a fresh holder-owned producer.
+  val previous=video;videoFrame.removeView(previous);previous.holder.removeCallback(this)
+  video=SurfaceView(this).apply{holder.addCallback(this@PlayerActivity)}
+  videoFrame.addView(video,0,FrameLayout.LayoutParams(-1,-1))
+ }
  private fun outputPanel(){AlertDialog.Builder(this).setTitle("画面输出").setSingleChoiceItems(arrayOf("自动（华为／荣耀使用兼容输出）","兼容输出（避开 OpenGL，最长边960）","OpenGL 输出（原分辨率）"),when(getSharedPreferences("playback",0).getString("output","auto")){"cpu"->1;"gpu"->2;else->0}){d,i->session.output(arrayOf("auto","cpu","gpu")[i]);d.dismiss()}.setNegativeButton("关闭",null).show()}
  private fun decoderPanel(){AlertDialog.Builder(this).setTitle("视频解码").setSingleChoiceItems(arrayOf("兼容播放（软件解码，默认）","硬件加速（复制解码）"),if(s.decoderMode=="no")0 else 1){d,i->session.decoder(if(i==0)"no" else "mediacodec-copy");d.dismiss()}.setNegativeButton("关闭",null).show()}
  private fun sendEnhancement(){val effective=when(quality){1->enhancement.copy(detail=0f);2->enhancement.copy(detail=0f,denoise=0f);3->enhancement.copy(mode=4,detail=0f,denoise=0f);4->enhancement.copy(bypass=true);else->enhancement};session.enhance(effective)}
@@ -129,7 +136,8 @@ class PlayerActivity:Activity(),SurfaceHolder.Callback {
  private fun speedPanel(){val speeds=doubleArrayOf(.25,.5,.75,1.0,1.25,1.5,2.0);AlertDialog.Builder(this).setTitle("播放速度").setSingleChoiceItems(speeds.map{"${it}×"}.toTypedArray(),speeds.indexOfFirst{it==s.speed}){d,i->session.speed(speeds[i]);d.dismiss()}.show()}
  private fun enhancePanel(){
   val panel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(16.dp,4.dp,16.dp,8.dp)}
-  val modes=Spinner(this);modes.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先"));modes.setSelection(enhancement.mode);panel.addView(modes,LinearLayout.LayoutParams(-1,48.dp));modes.onItemSelectedListener=object:AdapterView.OnItemSelectedListener{override fun onNothingSelected(p:AdapterView<*>?){};override fun onItemSelected(p:AdapterView<*>?,v:View?,i:Int,id:Long){enhancement=enhancement.copy(mode=i,bypass=false,locked=false);sendEnhancement()}}
+  val comparison=CheckBox(this);val exposureLock=CheckBox(this)
+  val modes=Spinner(this);modes.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先"));modes.setSelection(enhancement.mode);panel.addView(modes,LinearLayout.LayoutParams(-1,48.dp));modes.onItemSelectedListener=object:AdapterView.OnItemSelectedListener{override fun onNothingSelected(p:AdapterView<*>?){};override fun onItemSelected(p:AdapterView<*>?,v:View?,i:Int,id:Long){val selected=enhancement.selectMode(i);if(selected!=enhancement){enhancement=selected;comparison.isChecked=false;exposureLock.isChecked=false;sendEnhancement()}}}
   fun slider(label:String,min:Int,max:Int,value:Int,apply:(Int)->Unit){val title=text("$label：$value",13f);panel.addView(title);val bar=SeekBar(this).apply{this.max=max-min;progress=value-min;isEnabled=s.rendererTier==0||(!label.startsWith("保边")&&!label.startsWith("细节"))};panel.addView(bar,LinearLayout.LayoutParams(-1,42.dp));bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(b:SeekBar){};override fun onStopTrackingTouch(b:SeekBar){};override fun onProgressChanged(b:SeekBar,v:Int,user:Boolean){if(user){title.text="$label：${v+min}";apply(v+min);sendEnhancement()}}})}
   slider("曝光偏移（百分之一EV）",-100,100,(enhancement.manualEv*100).toInt()){enhancement=enhancement.copy(manualEv=it/100f,locked=false)}
   slider("暗部／局部提亮",0,100,enhancement.shadows.toInt()){enhancement=enhancement.copy(shadows=it.toFloat())}
@@ -137,8 +145,8 @@ class PlayerActivity:Activity(),SurfaceHolder.Callback {
   slider("饱和度",0,150,enhancement.saturation.toInt()){enhancement=enhancement.copy(saturation=it.toFloat())}
   slider("保边空间降噪",0,100,enhancement.denoise.toInt()){enhancement=enhancement.copy(denoise=it.toFloat())}
   slider("细节（有噪声门控）",0,30,enhancement.detail.toInt()){enhancement=enhancement.copy(detail=it.toFloat())}
-  panel.addView(CheckBox(this).apply{text="原画对比（选区与倍数不变）";isChecked=enhancement.bypass;setOnCheckedChangeListener{_,v->enhancement=enhancement.copy(bypass=v);sendEnhancement()}})
-  panel.addView(CheckBox(this).apply{text="锁定当前曝光（重选区域后解除）";isChecked=enhancement.locked;isEnabled=s.receipt!=null;setOnCheckedChangeListener{_,v->enhancement=enhancement.copy(locked=v);sendEnhancement()}})
+  panel.addView(comparison.apply{text="原画对比（选区与倍数不变）";isChecked=enhancement.bypass;setOnCheckedChangeListener{_,v->enhancement=enhancement.copy(bypass=v);sendEnhancement()}})
+  panel.addView(exposureLock.apply{text="锁定当前曝光（重选区域后解除）";isChecked=enhancement.locked;isEnabled=s.receipt!=null;setOnCheckedChangeListener{_,v->enhancement=enhancement.copy(locked=v);sendEnhancement()}})
   val scroll=ScrollView(this);scroll.addView(panel);AlertDialog.Builder(this).setTitle("视频像素增强 · 非屏幕背光").setView(scroll).setPositiveButton("完成",null).setNeutralButton("重置"){_,_->enhancement=EnhanceSettings();quality=0;sendEnhancement()}.show()
  }
  private fun toggleClip(){clipPanel.visibility=if(clipPanel.visibility==View.VISIBLE)View.GONE else View.VISIBLE;if(clipPanel.visibility==View.VISIBLE){s.durationUs?.takeIf{it>0}?.let{if(clipRange==null)clipRange=ClipRange(0,it)};updateClip()}else{loop=false;session.setLoop(null)}}

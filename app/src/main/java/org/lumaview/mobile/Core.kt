@@ -84,6 +84,7 @@ object ExposureReference {
  fun tone(v:Double,ev:Double):Double {val x=v.coerceIn(0.0,1.0);val g=2.0.pow(ev.coerceIn(0.0,4.0));return x*g/(1+x*(g-1))}
 }
 data class EnhanceSettings(val mode:Int=1,val manualEv:Float=0f,val shadows:Float=60f,val contrast:Float=0f,val saturation:Float=100f,val denoise:Float=40f,val detail:Float=8f,val bypass:Boolean=false,val locked:Boolean=false) {
+ fun selectMode(selected:Int)=if(selected==mode)this else copy(mode=selected,bypass=false,locked=false)
  fun values()=floatArrayOf(mode.toFloat(),manualEv.coerceIn(-1f,1f),shadows.coerceIn(0f,100f),contrast.coerceIn(-25f,25f),saturation.coerceIn(0f,150f),denoise.coerceIn(0f,100f),detail.coerceIn(0f,30f),if(bypass)1f else 0f,if(locked)1f else 0f)
 }
 /** Only valid playback windows count. Unknown counters are not zero drops. */

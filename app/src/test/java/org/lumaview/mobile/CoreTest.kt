@@ -4,6 +4,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreTest {
+    @Test fun initialModeSelectionPreservesComparisonAndExposureLock() {
+        val initial=EnhanceSettings(mode=2,bypass=true,locked=true,contrast=12f)
+        assertEquals(initial,initial.selectMode(2))
+        assertEquals(EnhanceSettings(mode=3,bypass=false,locked=false,contrast=12f),initial.selectMode(3))
+    }
     @Test fun progressInterpolatesAndDoesNotRewindForSmallJitter() {
         val clock=PlaybackProgress()
         clock.sample(1,1_000_000,10_000_000,false,1.0,1000)
