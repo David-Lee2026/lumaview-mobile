@@ -191,3 +191,10 @@ if 'lvm_receipt_v1 result=' not in part:
  s=s[:idx]+block+s[idx:];(root/'video/out/gpu/video.c').write_text(s)
 change('video/out/gpu/video.c','    uninit_video(p);\n    ra_hwdec_ctx_uninit', '    ra_tex_free(p->ra, &p->lvm_history);\n    uninit_video(p);\n    ra_hwdec_ctx_uninit')
 print('LumaView native extension applied:',root)
+# An independent native-window producer avoids GLES driver texture/swap failures.
+for name in ['lvm_cpu.h','vo_lvm_android.c']:
+ write('video/out/'+name,(Path(__file__).parent/'native'/name).read_text())
+change('meson.build',"'video/out/vo_mediacodec_embed.c')","'video/out/vo_mediacodec_embed.c',\n                     'video/out/vo_lvm_android.c')")
+change('video/out/vo.c','extern const struct vo_driver video_out_mediacodec_embed;','extern const struct vo_driver video_out_mediacodec_embed;\nextern const struct vo_driver video_out_lvm_android;')
+change('video/out/vo.c','    &video_out_mediacodec_embed,','    &video_out_mediacodec_embed,\n    &video_out_lvm_android,')
+change('video/out/opengl/context_android.c','    eglSwapBuffers(p->egl_display, p->egl_surface);','    if (!eglSwapBuffers(p->egl_display, p->egl_surface))\n        MP_ERR(ctx, "LVM EGL swap failed (0x%x)\\n", eglGetError());')

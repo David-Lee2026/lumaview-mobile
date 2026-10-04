@@ -217,4 +217,38 @@ class PlayerIntegrationTest {
   }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000)}
  }
 
+ @Test fun compatibleOutputShowsPortraitPlaybackAndEverySetting(){
+  inst.uiAutomation.executeShellCommand("wm size 540x1122").close();inst.uiAutomation.executeShellCommand("wm density 240").close();Thread.sleep(1500)
+  context.getSharedPreferences("playback",0).edit().putString("output","cpu").putString("decoder","no").commit()
+  val input=File(context.filesDir,"hd-portrait.mp4");inst.context.assets.open("hd-portrait.mp4").use{src->input.outputStream().use{src.copyTo(it)}}
+  context.getSharedPreferences("history",0).edit().putLong("position:${Uri.fromFile(input)}",0).commit()
+  activity=inst.startActivitySync(Intent(context,PlayerActivity::class.java).setData(Uri.fromFile(input)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));session=value("session") as PlayerSession
+  try{
+   waitFor("CPU portrait buffer posted"){session.state.output=="lvm-android"&&session.state.rotation==90&&session.state.receipt?.let{it[6]==0.0&&it[13]>0}==true}
+   val pause=bounds(value("playButton") as View);assertTrue("portrait pause must remain at least 48dp wide",pause.width()>=48*context.resources.displayMetrics.density)
+   tap("Ⅱ 暂停");waitFor("visible portrait pause works"){session.state.paused}
+   fun frame(settings:EnhanceSettings,name:String):Double{val request=session.state.receipt!![3];session.enhance(settings,true);waitFor("CPU setting $name"){session.state.receipt?.let{it[3]>request&&it[6]==0.0&&it[5]==(if(settings.bypass)0 else settings.mode).toDouble()}==true};return mean(screenSnapshot(name))}
+   val original=frame(EnhanceSettings(bypass=true),"cpu-portrait-original");assertTrue("CPU original must reach screen",original>4)
+   val balanced=frame(EnhanceSettings(),"cpu-portrait-balanced");assertTrue("CPU enhancement must reach screen",balanced>original*1.12)
+   val extreme=frame(EnhanceSettings(mode=3),"cpu-portrait-extreme");assertTrue("mode must change actual pixels",extreme>balanced*1.02)
+   val exposure=frame(EnhanceSettings(manualEv=.5f),"cpu-portrait-exposure");assertTrue("EV must change actual pixels",exposure>balanced*1.05)
+   val contrastLow=frame(EnhanceSettings(contrast=-25f),"cpu-portrait-contrast-low")
+   val contrastHigh=frame(EnhanceSettings(contrast=25f),"cpu-portrait-contrast-high");assertTrue("contrast must change actual pixels",kotlin.math.abs(contrastHigh-contrastLow)>2)
+   frame(EnhanceSettings(saturation=0f),"cpu-portrait-gray")
+   val gray=BitmapFactory.decodeFile(File(evidence,"cpu-portrait-gray.png").path);var chroma=0
+   for(y in 0 until gray.height step 8)for(x in 0 until gray.width step 8){val p=gray.getPixel(x,y);chroma=maxOf(chroma,kotlin.math.abs(((p shr 16)and 255)-((p shr 8)and 255)),kotlin.math.abs((p and 255)-((p shr 8)and 255)))};gray.recycle();assertTrue("saturation zero must be gray",chroma<=2)
+   frame(EnhanceSettings(),"cpu-portrait-reset")
+   val oldPosition=session.state.positionUs!!;session.output("gpu");waitFor("GPU comparison output"){session.state.output=="gpu"&&session.state.receipt?.get(6)==0.0&&session.state.paused};assertTrue(mean(screenSnapshot("gpu-portrait-comparison"))>4)
+   assertTrue("output switch preserves position",kotlin.math.abs(session.state.positionUs!!-oldPosition)<200_000)
+   session.output("cpu");waitFor("CPU comparison restored"){session.state.output=="lvm-android"&&session.state.receipt?.get(6)==0.0&&session.state.paused};assertTrue(mean(screenSnapshot("cpu-portrait-restored"))>4)
+   val logged=CountDownLatch(1);var diagnostic="";session.diagnostic{diagnostic=it;logged.countDown()};assertTrue(logged.await(5,TimeUnit.SECONDS));assertTrue(diagnostic.contains("first buffer posted successfully"));File(evidence,"CPU_DIAGNOSTIC.txt").writeText(diagnostic)
+   File(evidence,"CPU_PORTRAIT_RESULT.json").writeText(JSONObject().put("output","lvm-android").put("originalLuma",original).put("balancedLuma",balanced).put("extremeLuma",extreme).put("manualEvLuma",exposure).put("contrastLowLuma",contrastLow).put("contrastHighLuma",contrastHigh).put("maxGrayChroma",chroma).put("pauseWidthPixels",pause.width()).put("rotation",90).put("physicalDevice",false).toString(2))
+  }finally{inst.runOnMainSync{activity.finish()};Thread.sleep(1000);context.getSharedPreferences("playback",0).edit().remove("output").commit();inst.uiAutomation.executeShellCommand("wm size 1280x800").close();inst.uiAutomation.executeShellCommand("wm density 160").close();Thread.sleep(1500)}
+ }
+ @Test fun compatibleOutputSupportsRoiAndExports(){
+  context.getSharedPreferences("playback",0).edit().putString("output","cpu").putString("decoder","no").commit()
+  try{realTouchRenderingAndExports();roiStatisticsIgnoreOutsideBrightnessAndRespondInside();highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement()}
+  finally{context.getSharedPreferences("playback",0).edit().remove("output").commit()}
+ }
+
 }

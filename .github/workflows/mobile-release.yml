@@ -2,7 +2,7 @@ name: LumaView Mobile APK and integration
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py, ci/run_device_tests.py]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py, ci/run_device_tests.py, ci/native/**]
   workflow_dispatch:
 permissions:
   contents: read
@@ -78,6 +78,10 @@ jobs:
           run-id: 37127934301
           github-token: ${{ github.token }}
           path: native-input
+      - name: Verify CPU compatibility processing
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -O2 -fsanitize=address,undefined ci/native/test_lvm_cpu.c -lm -o /tmp/lvm-cpu-test
+          /tmp/lvm-cpu-test
       - name: Check GLES 3 shader syntax
         run: python3 ci/verify_shader.py
       - name: Rebuild modified native engine and JNI bridge

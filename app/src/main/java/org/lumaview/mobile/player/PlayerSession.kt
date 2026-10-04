@@ -11,13 +11,15 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.CountDownLatch
 
 data class Track(val id:Int,val type:String,val title:String,val selected:Boolean,val ffIndex:Int?)
-data class PlayerState(val generation:Long=0,val positionUs:Long?=null,val durationUs:Long?=null,val paused:Boolean=true,val speed:Double=1.0,val width:Int=0,val height:Int=0,val rotation:Int=0,val sar:Double=1.0,val seekable:Boolean=false,val decoder:String="尚未打开",val hdr:Boolean=false,val tracks:List<Track> = emptyList(),val receipt:DoubleArray?=null,val error:String?=null,val dropped:Long?=null,val outputFrames:Long?=null,val sourceRect:RoiRect?=null,val rendererTier:Int=0,val decoderMode:String="no",val videoNotice:String?=null,val decoderFallback:Boolean=false)
+data class PlayerState(val generation:Long=0,val positionUs:Long?=null,val durationUs:Long?=null,val paused:Boolean=true,val speed:Double=1.0,val width:Int=0,val height:Int=0,val rotation:Int=0,val sar:Double=1.0,val seekable:Boolean=false,val decoder:String="尚未打开",val hdr:Boolean=false,val tracks:List<Track> = emptyList(),val receipt:DoubleArray?=null,val error:String?=null,val dropped:Long?=null,val outputFrames:Long?=null,val sourceRect:RoiRect?=null,val rendererTier:Int=0,val decoderMode:String="no",val videoNotice:String?=null,val decoderFallback:Boolean=false,val output:String="gpu")
 /** All native calls, including teardown, are serialized on one process-wide worker. */
 class PlayerSession(private val context:Context,private val callback:(PlayerState)->Unit) {
  companion object {private val thread=HandlerThread("LumaView-player").apply{start()};private val worker=Handler(thread.looper);private val serial=AtomicLong()}
  private val ui=Handler(Looper.getMainLooper());private var initialized=false;private var created=false;@Volatile private var closed=false
  private var input:ReadLease?=null;private var surface:Surface?=null
- private var surfaceWidth=1;private var surfaceHeight=1;private var engineEpoch=0L
+ private var surfaceWidth=0;private var surfaceHeight=0;private var engineEpoch=0L
+ private var outputMode=context.getSharedPreferences("playback",0).getString("output","auto")?:"auto"
+ private fun selectedOutput()=if(outputMode=="cpu"||(outputMode=="auto"&&listOf(Build.MANUFACTURER,Build.BRAND).any{it.equals("huawei",true)||it.equals("honor",true)}))"lvm-android" else "gpu"
  private var rendererTier=0;private var videoNotice:String?=null
  @Volatile private var decoderMode=context.getSharedPreferences("playback",0).getString("decoder","no").takeIf{it=="no"||it=="mediacodec-copy"}?:"no"
  @Volatile private var hardwareAttemptFailed=false
@@ -31,7 +33,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   // hwdec-current remains "no" while a switch is pending. Declare fallback
   // only after this attempt reports an actual video codec failure.
   if(decoderMode=="mediacodec-copy"&&((prefix=="vd"&&text.contains("Could not open codec"))||(prefix=="ffmpeg/video"&&text.contains("failed to start"))))hardwareAttemptFailed=true
-  if(level<=30||text.contains("GL_VERSION")||text.contains("GL_RENDERER")||text.contains("GL_VENDOR")||text.contains("Using hardware decoding")){synchronized(logLines){if(logLines.size>=100)logLines.removeFirst();logLines.add("$prefix: ${text.take(320)}")}}
+  if(level<=30||text.contains("GL_VERSION")||text.contains("GL_RENDERER")||text.contains("GL_VENDOR")||text.contains("Using hardware decoding")||text.contains("LVM software output")){synchronized(logLines){if(logLines.size>=100)logLines.removeFirst();logLines.add("$prefix: ${text.take(320)}")}}
  }}
  private val observer=object:MPVLib.EventObserver {
   override fun eventProperty(property:String){};override fun eventProperty(property:String,value:Long){};override fun eventProperty(property:String,value:Boolean){};override fun eventProperty(property:String,value:String){};override fun eventProperty(property:String,value:Double){}
@@ -46,7 +48,8 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  fun attach(target:Surface,w:Int,h:Int){
   safe {
    if(surface!==target){shutdownEngine();surfaceGeneration=serial.incrementAndGet();surface=target}
-   surfaceWidth=w.coerceAtLeast(1);surfaceHeight=h.coerceAtLeast(1)
+   if(w<=0||h<=0||!target.isValid)return@safe
+   surfaceWidth=w;surfaceHeight=h
    if(input!=null&&!initialized)initialize()
    if(initialized)MPVLib.setPropertyString("android-surface-size","${w}x$h")
   }
@@ -66,11 +69,12 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  }}
  private fun initialize(){
   val lease=input?:return;val target=surface?:return
+  if(surfaceWidth<=0||surfaceHeight<=0||!target.isValid)return
   for(name in listOf("mobile","compatible")){val shader=File(context.filesDir,"$name.glsl");context.assets.open("lvm/$name.glsl").use{src->shader.outputStream().use{src.copyTo(it)}}}
   val shader=File(context.filesDir,if(rendererTier==1)"compatible.glsl" else "mobile.glsl")
   hardwareAttemptFailed=false;engineEpoch=serial.incrementAndGet();MPVLib.create(context.applicationContext);created=true
   try {
-  val options=linkedMapOf("config" to "no","load-scripts" to "no","autoload-files" to "no","ytdl" to "no","load-auto-profiles" to "no","osc" to "no","input-default-bindings" to "no","osd-level" to "0","vo" to "gpu","gpu-context" to "android","opengl-es" to "yes","hwdec" to decoderMode,"fbo-format" to "rgba8","android-surface-size" to "${surfaceWidth}x$surfaceHeight","ao" to "audiotrack,opensles","video-sync" to "audio","scale" to "bilinear","dscale" to "bilinear","cscale" to "bilinear","interpolation" to "no","deband" to "no","gpu-shader-cache-dir" to File(context.cacheDir,"shader-cache").absolutePath,"demuxer-max-bytes" to "33554432","demuxer-max-back-bytes" to "16777216","keep-open" to "yes","idle" to "yes","force-window" to "yes","pause" to "yes","volume" to "100","sub-auto" to "no","audio-file-auto" to "no","glsl-shaders" to if(rendererTier<2)shader.absolutePath else "")
+  val options=linkedMapOf("config" to "no","load-scripts" to "no","autoload-files" to "no","ytdl" to "no","load-auto-profiles" to "no","osc" to "no","input-default-bindings" to "no","osd-level" to "0","vo" to selectedOutput(),"gpu-context" to "android","opengl-es" to "yes","hwdec" to decoderMode,"fbo-format" to "rgba8","egl-output-format" to "rgba8","android-surface-size" to "${surfaceWidth}x$surfaceHeight","ao" to "audiotrack,opensles","video-sync" to "audio","scale" to "bilinear","dscale" to "bilinear","cscale" to "bilinear","interpolation" to "no","deband" to "no","gpu-shader-cache-dir" to File(context.cacheDir,"shader-cache").absolutePath,"demuxer-max-bytes" to "33554432","demuxer-max-back-bytes" to "16777216","keep-open" to "yes","idle" to "yes","force-window" to "yes","pause" to "yes","volume" to "100","sub-auto" to "no","audio-file-auto" to "no","glsl-shaders" to if(rendererTier<2)shader.absolutePath else "")
   options.forEach{(k,v)->val rc=MPVLib.setOptionString(k,v);check(rc>=0){"内核选项不可用：$k ($rc)"}}
   MPVLib.addObserver(observer);MPVLib.addLogObserver(logObserver)
   // Set wid before mpv_initialize can start a force-window VO.
@@ -118,12 +122,13 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  /** Reconfigure decoding without abandoning the Surface or resetting the timeline. */
  fun decoder(value:String){safe{require(value=="no"||value=="mediacodec-copy");hardwareAttemptFailed=false;decoderMode=value;context.getSharedPreferences("playback",0).edit().putString("decoder",value).apply();if(initialized){MPVLib.setPropertyString("hwdec",value);submit(true)}}}
  private fun recoverRenderer(){
-  if(rendererTier>=2)return
+  if(selectedOutput()!="gpu"||rendererTier>=2)return
   rendererTier++
   videoNotice=if(rendererTier==1)"兼容增强：降噪／细节已停用" else "增强已停用，正在重建原画"
   MPVLib.setPropertyString("glsl-shaders",if(rendererTier==1)File(context.filesDir,"compatible.glsl").absolutePath else "")
   submit(true)
  }
+ fun output(value:String){safe{require(value in setOf("auto","cpu","gpu"));resumeUs=state.positionUs?:0;resumePaused=state.paused;resumeSpeed=state.speed;shutdownEngine();outputMode=value;rendererTier=0;revision++;videoNotice=null;context.getSharedPreferences("playback",0).edit().putString("output",value).apply();if(input!=null&&surface!=null)initialize()}}
  fun frame(forward:Boolean){safe{if(initialized){MPVLib.setPropertyBoolean("pause",true);MPVLib.command(arrayOf(if(forward)"frame-step" else "frame-back-step"))}}}
  fun selectTrack(type:String,id:Int?){safe{if(initialized)MPVLib.setPropertyString(if(type=="audio")"aid" else "sid",id?.toString()?:"no")}}
  fun externalSubtitle(lease:ReadLease){safe({lease.close()}){if(initialized){ // mpv opens its own file descriptor; retain lease until session end.
@@ -131,7 +136,7 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
  }else lease.close()}}
  private val subtitleLeases=ArrayList<ReadLease>()
  fun screenshot(file:File,reply:(Result<File>)->Unit){safe{val r=runCatching{check(initialized);MPVLib.command(arrayOf("screenshot-to-file",file.absolutePath,"window"));check(file.exists()&&file.length()>0){"当前画面无法截图"};file};ui.post{reply(r)}}}
- fun diagnostic(reply:(String)->Unit){safe{val text="LumaView Mobile 0.1.1-test\n解码设置：$decoderMode\n增强路径：$rendererTier\n$videoNotice\nAPI ${Build.VERSION.SDK_INT}\nABI ${Build.SUPPORTED_ABIS.joinToString()}\n${state.decoder}\nSize ${state.width}×${state.height}\nHDR ${state.hdr}\nMode receipt ${state.receipt?.joinToString()}\n最近内核日志：\n${synchronized(logLines){logLines.joinToString("\n")}}\n";ui.post{reply(text)}}}
+ fun diagnostic(reply:(String)->Unit){safe{val text="LumaView Mobile ${`is`.xyz.mpv.BuildConfig.VERSION_NAME}\n设备：${Build.MANUFACTURER} ${Build.MODEL} / ${Build.HARDWARE}\n系统：${Build.DISPLAY}\n画面输出：${selectedOutput()} ($outputMode)\nSurface：${surfaceWidth}×${surfaceHeight} valid=${surface?.isValid}\n像素格式：${if(initialized)MPVLib.getPropertyString("video-params/pixelformat") else "未打开"}\n解码设置：$decoderMode\n增强路径：$rendererTier\n$videoNotice\nAPI ${Build.VERSION.SDK_INT}\nABI ${Build.SUPPORTED_ABIS.joinToString()}\n${state.decoder}\nSize ${state.width}×${state.height}\nHDR ${state.hdr}\nMode receipt ${state.receipt?.joinToString()}\n最近内核日志：\n${synchronized(logLines){logLines.joinToString("\n")}}\n";ui.post{reply(text)}}}
  /** Free hardware decoder before a Transformer job, and reopen the same media afterward. */
  fun suspendForExport(done:()->Unit){safe{resumeUs=state.positionUs?:0;resumePaused=true;resumeSpeed=state.speed;shutdownEngine();ui.post(done)}}
  fun resumeAfterExport(){safe{if(!initialized&&input!=null&&surface!=null)initialize()}}
@@ -148,10 +153,10 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   val cw=number("video-params/crop-w")?:w.toDouble();val ch=number("video-params/crop-h")?:h.toDouble()
   val sourceRect=RoiRect(cx,cy,cx+cw,cy+ch).clamped(w,h)
   val trc=text("video-params/gamma")?:"";var receipt=if(initialized)NativeStage.receipt()?.takeIf{it.size>=14&&it[0]==generation.toDouble()&&it[1]==surfaceGeneration.toDouble()&&it[2]==revision.toDouble()&&it[3]==request.toDouble()}else null
-  if(receipt?.get(6)==2.0&&rendererTier<2){recoverRenderer();receipt=null}
+  if(receipt?.get(6)==2.0&&rendererTier<2&&selectedOutput()=="gpu"){recoverRenderer();receipt=null}
   val activeDecoder=text("hwdec-current")?:"未知"
   val decoderFallback=decoderMode=="mediacodec-copy"&&hardwareAttemptFailed&&activeDecoder=="no"
-  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)%360+360)%360,par,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / $activeDecoder",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong(),sourceRect,rendererTier,decoderMode,videoNotice,decoderFallback)
+  val s=PlayerState(generation,number("time-pos")?.times(1e6)?.toLong(),number("duration")?.times(1e6)?.toLong(),if(initialized)MPVLib.getPropertyBoolean("pause")?:true else true,number("speed")?:resumeSpeed,w,h,((number("video-params/rotate")?.toInt()?:0)%360+360)%360,par,initialized&&MPVLib.getPropertyBoolean("seekable")==true,"${text("video-codec")?:"等待解码"} / $activeDecoder",trc in setOf("pq","hlg","st2084")||receipt?.get(6)==1.0,trackCache,receipt,error,number("decoder-frame-drop-count")?.toLong(),number("frame-drop-count")?.toLong(),sourceRect,rendererTier,decoderMode,videoNotice,decoderFallback,selectedOutput())
   state=s;ui.post{if(!closed&&s.generation==generation)callback(s)}
  }
 }
