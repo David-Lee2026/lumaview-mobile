@@ -132,7 +132,20 @@ class PlayerIntegrationTest {
    waitFor("progress playback"){(session.state.positionUs?:0) in 1_000_000..4_000_000&&session.state.durationUs!=null&&!session.state.paused}
    // Keep the measured row visible through the application's real menu;
    // normal auto-hide may otherwise occur between the two screenshots.
-   tap("更多");val visible=inst.uiAutomation.rootInActiveWindow.findAccessibilityNodeInfosByText("控制栏常显／自动隐藏");assertTrue(visible.isNotEmpty());assertTrue(visible[0].performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(300)
+   tap("更多");inst.waitForIdleSync()
+   inst.uiAutomation.takeScreenshot()?.let{bitmap->File(evidence,"progress-controls-menu-window.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()}
+   val menuRows=org.json.JSONArray()
+   fun describe(node:AccessibilityNodeInfo){val rect=Rect();node.getBoundsInScreen(rect);menuRows.put(JSONObject().put("text",node.text?.toString()).put("class",node.className?.toString()).put("visible",node.isVisibleToUser).put("bounds",rect.toShortString()));for(i in 0 until node.childCount)node.getChild(i)?.let{describe(it)}}
+   describe(inst.uiAutomation.rootInActiveWindow);File(evidence,"progress-controls-menu.json").writeText(menuRows.toString(2))
+   // The tenth output-settings row makes this dialog scroll on smaller
+   // windows. Select the real visible menu row after bringing it into view.
+   waitFor("visible controls menu selection",8000){
+    val root=inst.uiAutomation.rootInActiveWindow
+    val item=root.findAccessibilityNodeInfosByText("控制栏常显／自动隐藏").firstOrNull{it.isVisibleToUser}
+    if(item!=null&&item.performAction(AccessibilityNodeInfo.ACTION_CLICK))true
+    else{var list:AccessibilityNodeInfo?=null;fun locate(n:AccessibilityNodeInfo){if(n.className?.toString()=="android.widget.ListView")list=n;for(i in 0 until n.childCount)n.getChild(i)?.let{locate(it)}};locate(root);list?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);false}
+   }
+   Thread.sleep(300);inst.runOnMainSync{assertEquals("menu must enable actual persistent controls",true,value("alwaysControls"))}
    inst.runOnMainSync{
     val bar=value("seek") as SeekBar;val previous=bar.progress;assertTrue(previous>0)
     activity.javaClass.getDeclaredMethod("render",org.lumaview.mobile.player.PlayerState::class.java).apply{isAccessible=true}.invoke(activity,session.state.copy(positionUs=null))
