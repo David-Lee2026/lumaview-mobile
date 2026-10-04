@@ -2,7 +2,7 @@ name: LumaView Mobile APK and integration
 on:
   push:
     branches: [implementation/android-20261003]
-    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py, ci/run_device_tests.py, ci/native/**]
+    paths: [.github/workflows/mobile-release.yml, app/**, shaders/**, ci/patch_engine.py, ci/prepare_release.py, ci/verify_apk.py, ci/release_fix.py, ci/verify_exports.py, ci/verify_shader.py, ci/run_device_tests.py, ci/native/**, ci/portrait_regression.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -92,6 +92,13 @@ jobs:
           ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultDebug :app:assembleDefaultDebugAndroidTest --stacktrace --no-daemon 2>&1 | tee release-evidence/gradle.log
       - name: Validate signed installable APK, ABI and 16K alignment
         run: python3 ci/verify_apk.py ${{ matrix.arch }}
+      - uses: actions/download-artifact@v4
+        if: matrix.arch == 'x86_64'
+        with:
+          name: LumaView-APK-x86_64-API29
+          run-id: 37150812083
+          github-token: ${{ github.token }}
+          path: previous-apk
       - name: Prepare hardware accelerated emulator
         if: matrix.arch == 'x86_64'
         run: |
@@ -114,6 +121,7 @@ jobs:
           script: |
             adb shell wm size 1280x800
             adb shell wm density 160
+            python3 ci/portrait_regression.py
             python3 ci/run_device_tests.py
       - name: Decode exported media and compare compressed payloads
         if: matrix.arch == 'x86_64'
@@ -139,3 +147,39 @@ jobs:
             app/build/test-results
             app/build/outputs/androidTest-results
           retention-days: 30
+
+  download:
+    needs: [source, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: LumaView-Android-*
+          path: validated
+      - name: Publish complete validated test APK and evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SOURCE_COMMIT: ${{ needs.source.outputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p publish
+          cp validated/LumaView-Android-arm64/release-out/*.apk publish/
+          cp validated/LumaView-Android-arm64/release-out/SHA256SUMS.txt publish/
+          (cd publish && sha256sum -c SHA256SUMS.txt)
+          zip -qr publish/LumaView-Mobile-0.1.2-test-build-and-validation.zip validated
+          cat > publish/BUILD_REPORT.txt <<EOF
+          LumaView Mobile 0.1.2-test
+          Source: $SOURCE_COMMIT
+          ARM64: built and signature/ABI/alignment verified.
+          API29/API35: x86_64 emulator, 9 instrumentation methods plus unit tests.
+          Huawei/Mali-G76 physical verification: NOT_RUN.
+          Huawei/Honor use independent CPU RGBA output by default, avoiding OpenGL.
+          Compatibility preview longest edge: 960 pixels. Exports retain source size.
+          Debug test certificate; install identity may differ from the previous APK.
+          EOF
+          gh release create v0.1.2-test publish/* --repo "$REPOSITORY" --target "$SOURCE_COMMIT" --prerelease --title 'LumaView Mobile 0.1.2-test' --notes-file publish/BUILD_REPORT.txt

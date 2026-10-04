@@ -53,6 +53,9 @@ for codec,pixels,name in [('libx264','yuv420p','hd-h264.mp4'),('libx265','yuv420
  command=['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=1920x1080:rate=24:duration=4','-vf','format=rgb24,colorchannelmixer=rr=0.18:gg=0.18:bb=0.18,format='+pixels,'-c:v',codec,'-preset','ultrafast','-crf','24']
  if codec=='libx265':command+=['-x265-params','pools=2:frame-threads=1:log-level=error']
  subprocess.run(command+['-y',str(evd/name)],check=True)
-subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-i',str(evd/'hd-h264.mp4'),'-c','copy','-metadata:s:v:0','rotate=90','-y',str(evd/'hd-portrait.mp4')],check=True)
+subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-display_rotation','-90','-i',str(evd/'hd-h264.mp4'),'-c','copy','-y',str(evd/'hd-portrait.mp4')],check=True)
+rotation_probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_entries','stream_side_data','-of','json',str(evd/'hd-portrait.mp4')],text=True))
+assert any(abs(side.get('rotation',0))==90 for stream in rotation_probe['streams'] for side in stream.get('side_data_list',[])),rotation_probe
+(ev/'portrait-fixture-metadata.json').write_text(json.dumps(rotation_probe,indent=2))
 shutil.copyfile(source/'dependencies-lock.json',ev/'dependencies-lock.json')
 print('Prepared native and fixture:',arch)

@@ -135,7 +135,17 @@ class PlayerSession(private val context:Context,private val callback:(PlayerStat
   subtitleLeases.add(lease);MPVLib.command(arrayOf("sub-add","fd://${lease.fd}","select",lease.name))
  }else lease.close()}}
  private val subtitleLeases=ArrayList<ReadLease>()
- fun screenshot(file:File,reply:(Result<File>)->Unit){safe{val r=runCatching{check(initialized);MPVLib.command(arrayOf("screenshot-to-file",file.absolutePath,"window"));check(file.exists()&&file.length()>0){"当前画面无法截图"};file};ui.post{reply(r)}}}
+ fun screenshot(file:File,reply:(Result<File>)->Unit){safe{
+  fun displayedReceipt()=NativeStage.receipt()?.let{it.size>=14&&it[0]==generation.toDouble()&&it[1]==surfaceGeneration.toDouble()&&it[2]==revision.toDouble()&&it[3]==request.toDouble()&&it[6] in listOf(0.0,1.0)}==true
+  val result=runCatching{
+   check(initialized)
+   if(selectedOutput()=="lvm-android")check(displayedReceipt()){"兼容画面尚未成功提交，请稍后重试"}
+   MPVLib.command(arrayOf("screenshot-to-file",file.absolutePath,"window"))
+   if(selectedOutput()=="lvm-android"&&!displayedReceipt()){file.delete();error("当前画面提交失败，截图未保存")}
+   check(file.exists()&&file.length()>0){"当前画面无法截图"};file
+  };ui.post{reply(result)}
+ }}
+
  fun diagnostic(reply:(String)->Unit){safe{val text="LumaView Mobile ${`is`.xyz.mpv.BuildConfig.VERSION_NAME}\n设备：${Build.MANUFACTURER} ${Build.MODEL} / ${Build.HARDWARE}\n系统：${Build.DISPLAY}\n画面输出：${selectedOutput()} ($outputMode)\nSurface：${surfaceWidth}×${surfaceHeight} valid=${surface?.isValid}\n像素格式：${if(initialized)MPVLib.getPropertyString("video-params/pixelformat") else "未打开"}\n解码设置：$decoderMode\n增强路径：$rendererTier\n$videoNotice\nAPI ${Build.VERSION.SDK_INT}\nABI ${Build.SUPPORTED_ABIS.joinToString()}\n${state.decoder}\nSize ${state.width}×${state.height}\nHDR ${state.hdr}\nMode receipt ${state.receipt?.joinToString()}\n最近内核日志：\n${synchronized(logLines){logLines.joinToString("\n")}}\n";ui.post{reply(text)}}}
  /** Free hardware decoder before a Transformer job, and reopen the same media afterward. */
  fun suspendForExport(done:()->Unit){safe{resumeUs=state.positionUs?:0;resumePaused=true;resumeSpeed=state.speed;shutdownEngine();ui.post(done)}}

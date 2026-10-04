@@ -8,7 +8,7 @@
 
 **Tech Stack:** Pinned mpv/FFmpeg, Android native windows, Kotlin, Gradle and existing GitHub Actions artifacts.
 
-**Spec:** User reports and diagnostic reproduced in docs/black-screen-investigation.md.
+**Spec:** User reports and diagnostic reproduced in docs/implementation/black-screen-investigation.md.
 
 ## Global Constraints
 - Only implementation/android-20261003; no main merge.
@@ -42,3 +42,11 @@
 - [ ] Expand integration to software output / portrait rotation and actual pixel contrast/mode changes.
 - [ ] Collect fresh review, complete both emulator API29/35 validations and ARM64 build.
 - [ ] Download APK, SHA256, full logs and evidence; persist downloadable files; label Huawei physical verification NOT RUN.
+
+## Execution record
+- Host CPU tests first failed for missing lvm_cpu.h, then passed original/modes/saturation/invalid-buffer/rotation with ASan/UBSan (local leak detection disabled because sandbox proc restriction; CI keeps it enabled).
+- Existing core suite plus a new lagged native timestamp test ran 14 tests / 1 failure. Phase correction then passed all14 using local Kotlin compiler/JUnit.
+- Portrait width defect is established by user screenshot and real View layout constraints. The on-device old-APK regression is added after the layout fix; it must show the old APK failure and the new APK pass, not claim an earlier execution.
+- Ruling: preserve software Canvas controls because previous API29 HWUI had documented buffer dequeue failures; software VO avoids EGL while retaining SurfaceView ownership. Cost if this does not address the physical failure: further device evidence and presentation fallback will be needed.
+- Native builds and Android validation run in GitHub Actions; no local SDK/emulator, no Huawei connection.
+- Review found automatic scene/PTS reset overriding locked CPU exposure. A dark→bright scene and backward-PTS test failed; explicit reset remains allowed, automatic transitions now preserve a locked exposure. Host suite then passed.

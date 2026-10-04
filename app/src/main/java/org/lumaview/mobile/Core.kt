@@ -105,3 +105,19 @@ class QualityGovernor {
   start=now;frames=0;drops=0;return level
  }
 }
+
+/** Native presentation failure takes precedence over requested comparison/HDR state. */
+fun enhancementLabel(r:DoubleArray?,tier:Int,hdr:Boolean,bypass:Boolean):String {
+ val reason=r?.getOrNull(6);val mode=r?.getOrNull(5)?:0.0
+ return when {
+  reason==4.0->"画面提交失败：请查看诊断"
+  reason==2.0->"视频输出异常：请查看播放诊断"
+  tier>=2->if(r==null)"正在恢复原画" else "原画播放（增强已停用）"
+  tier==1&&mode>0->"兼容增强（降噪／细节已停用）"
+  hdr->"HDR：SDR增强已旁路"
+  bypass->"原画对比（保持选区）"
+  r!=null&&reason==0.0->arrayOf("原画","自动均衡","弱光增强","极弱光增强","流畅优先")[mode.toInt().coerceIn(0,4)]
+  reason==3.0->"源尺寸超出增强预算：保持原画"
+  else->"增强等待渲染回执"
+ }
+}

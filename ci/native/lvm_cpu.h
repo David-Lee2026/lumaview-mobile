@@ -27,8 +27,11 @@ static int lvm_cpu_apply(uint8_t *rgba,int w,int h,int stride,const struct lvm_c
  }
  double mean=sum/count,dt=lvm_limit(pts-s->pts,0,1);
  double target=lvm_limit(lvm_limit(log2(.18)-mean,0,caps[c->mode])*(1-lvm_limit(bright*1.5/count,0,.85))+c->manual,0,4);
- if(!s->valid||reset||pts<s->pts||pts-s->pts>1||fabs(mean-s->mean)>2.5)s->ev=target;
- else if(!c->locked)s->ev+=lvm_limit((target-s->ev)*(1-exp(-dt/.4)),-dt,dt);
+ if(!s->valid||reset)s->ev=target;
+ else if(!c->locked){
+  if(pts<s->pts||pts-s->pts>1||fabs(mean-s->mean)>2.5)s->ev=target;
+  else s->ev+=lvm_limit((target-s->ev)*(1-exp(-dt/.4)),-dt,dt);
+ }
  s->mean=mean;s->pts=pts;s->valid=true;
  /* A bounded 256-entry LUT keeps per-pixel work free of pow/exp. */
  uint8_t lut[256];
@@ -45,6 +48,7 @@ static int lvm_cpu_apply(uint8_t *rgba,int w,int h,int stride,const struct lvm_c
  }
  /* Edge-gated cross filter. Reusable row storage avoids an entire extra frame. */
  if(c->mode!=4&&(c->denoise>0||c->detail>0)&&w>2&&h>2){
+  double edge_weight[256];for(int i=0;i<256;i++)edge_weight[i]=1/(1+i*i/256.);
   uint8_t *rows=malloc((size_t)w*4*3);if(!rows)return -2;
   memcpy(rows,rgba,w*4);memcpy(rows+w*4,rgba+stride,w*4);
   for(int y=1;y<h-1;y++){
@@ -52,7 +56,7 @@ static int lvm_cpu_apply(uint8_t *rgba,int w,int h,int stride,const struct lvm_c
    for(int x=1;x<w-1;x++)for(int k=0;k<3;k++){
     int pos=x*4+k;double center=rows[w*4+pos],sumv=center,weight=1;
     const int offsets[]={pos-4+w*4,pos+4+w*4,pos,pos+w*8};
-    for(int n=0;n<4;n++){double neighbour=rows[offsets[n]],diff=fabs(neighbour-center),wt=1/(1+diff*diff/256.);sumv+=neighbour*wt;weight+=wt;}
+    for(int n=0;n<4;n++){double neighbour=rows[offsets[n]],wt=edge_weight[abs((int)neighbour-(int)center)];sumv+=neighbour*wt;weight+=wt;}
     double smooth=sumv/weight,noise=fabs(center-smooth),out=center+(smooth-center)*c->denoise*.65;
     if(noise>1&&noise<20)out+=(center-smooth)*c->detail;
     rgba[y*stride+pos]=(uint8_t)lrint(lvm_limit(out,0,255));

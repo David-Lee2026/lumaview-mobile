@@ -22,6 +22,12 @@ int main(void) {
  assert(lvm_cpu_apply(image,16,16,64,&c,&state,0,1)==0);assert(image[0]==image[1]&&image[1]==image[2]);
  assert(lvm_cpu_apply(image,16,16,10,&c,&state,0,1)<0);
  assert(lvm_cpu_apply(NULL,16,16,64,&c,&state,0,1)<0);
+ c=(struct lvm_cpu_controls){.mode=3,.saturation=1};state=(struct lvm_cpu_state){0};
+ for(int i=0;i<256;i++){image[4*i]=image[4*i+1]=image[4*i+2]=30;image[4*i+3]=255;}
+ assert(lvm_cpu_apply(image,16,16,64,&c,&state,1,1)==0);double locked_ev=state.ev;c.locked=true;
+ for(int i=0;i<256;i++)image[4*i]=image[4*i+1]=image[4*i+2]=230;
+ assert(lvm_cpu_apply(image,16,16,64,&c,&state,2,0)==0);assert(state.ev==locked_ev);
+ assert(lvm_cpu_apply(image,16,16,64,&c,&state,0,0)==0);assert(state.ev==locked_ev);
  int x,y;lvm_cpu_source_point(0,0,3,2,90,false,&x,&y);assert(x==0&&y==1);
  lvm_cpu_source_point(1,2,3,2,90,false,&x,&y);assert(x==2&&y==0);
  lvm_cpu_source_point(0,0,3,2,180,false,&x,&y);assert(x==2&&y==1);

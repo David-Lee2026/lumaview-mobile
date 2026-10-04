@@ -23,10 +23,10 @@ struct priv {
  struct lvm_receipt_v1 pending;
  int screen_w,screen_h;
  uint64_t posted;
- bool ready;
+ bool ready,posted_image_valid;
 };
 static void output_error(struct vo *vo,const char *operation,int code){
- struct priv *p=vo->priv;MP_ERR(vo,"LVM software output %s failed (%d)\n",operation,code);
+ struct priv *p=vo->priv;p->posted_image_valid=false;MP_ERR(vo,"LVM software output %s failed (%d)\n",operation,code);
  if(vo->global->lvm){struct lvm_shared *s=vo->global->lvm;mp_mutex_lock(&s->lock);
   s->receipt=p->pending;s->receipt.valid=1;s->receipt.reason=4;s->receipt.effective_mode=0;mp_mutex_unlock(&s->lock);}
 }
@@ -37,7 +37,7 @@ static int resize(struct vo *vo){
  if(!p->display||p->display->w!=bw||p->display->h!=bh){
   int rc=ANativeWindow_setBuffersGeometry(vo_android_native_window(vo),bw,bh,WINDOW_FORMAT_RGBA_8888);
   if(rc){output_error(vo,"geometry",rc);return -1;}
-  mp_image_unrefp(&p->display);p->display=mp_image_alloc(IMGFMT_RGBA,bw,bh);if(!p->display)return -1;
+  p->posted_image_valid=false;mp_image_unrefp(&p->display);p->display=mp_image_alloc(IMGFMT_RGBA,bw,bh);if(!p->display)return -1;
   MP_INFO(vo,"LVM software output: Surface %dx%d, RGBA buffer %dx%d, no EGL\n",w,h,bw,bh);
  }
  p->screen_w=w;p->screen_h=h;vo->dwidth=bw;vo->dheight=bh;
@@ -53,7 +53,7 @@ static int reconfig(struct vo *vo,struct mp_image_params *params){
  struct priv *p=vo->priv;p->exposure.valid=false;return resize(vo);
 }
 static bool draw_frame(struct vo *vo,struct vo_frame *frame){
- struct priv *p=vo->priv;struct mp_image *image=frame->current;p->ready=false;
+ struct priv *p=vo->priv;struct mp_image *image=frame->current;p->ready=false;p->posted_image_valid=false;
  if(!image||image->params.force_window)return false;
  int w,h;if(!vo_android_surface_size(vo,&w,&h))return false;
  if(w!=p->screen_w||h!=p->screen_h||!p->display)if(resize(vo)<0)return false;
@@ -99,7 +99,7 @@ static void flip_page(struct vo *vo){
  if(valid)for(int y=0;y<buffer.height;y++)memcpy((uint8_t *)buffer.bits+y*buffer.stride*4,p->display->planes[0]+y*p->display->stride[0],buffer.width*4);
  rc=ANativeWindow_unlockAndPost(window);
  if(!valid||rc){output_error(vo,"post",rc?rc:-1);return;}
- p->pending.rendered_frames=++p->posted;
+ p->posted_image_valid=true;p->pending.rendered_frames=++p->posted;
  if(p->posted==1)MP_INFO(vo,"LVM software output first buffer posted successfully\n");
  if(vo->global->lvm){struct lvm_shared *s=vo->global->lvm;mp_mutex_lock(&s->lock);s->receipt=p->pending;mp_mutex_unlock(&s->lock);}
 }
@@ -108,7 +108,7 @@ static int control(struct vo *vo,uint32_t request,void *data){
  switch(request){
  case VOCTRL_SET_PANSCAN:case VOCTRL_EXTERNAL_RESIZE:if(resize(vo)<0)return VO_FALSE;vo->want_redraw=true;return VO_TRUE;
  case VOCTRL_RESET:p->exposure.valid=false;return VO_TRUE;
- case VOCTRL_SCREENSHOT:{struct voctrl_screenshot *args=data;if(args->scaled&&p->display){args->res=mp_image_new_copy(p->display);return VO_TRUE;}return VO_NOTIMPL;}
+ case VOCTRL_SCREENSHOT:{struct voctrl_screenshot *args=data;if(args->scaled&&p->display&&p->posted_image_valid){args->res=mp_image_new_copy(p->display);return VO_TRUE;}return VO_NOTIMPL;}
  }
  return VO_NOTIMPL;
 }

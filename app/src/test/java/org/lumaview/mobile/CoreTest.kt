@@ -14,6 +14,22 @@ class CoreTest {
         assertTrue(clock.position(1140)!!>=1_100_000)
         assertTrue(clock.position(2000)!!<=1_350_000)
     }
+    @Test fun progressKeepsMovingWhenNativeSamplesSlightlyLag() {
+        val clock=PlaybackProgress()
+        clock.sample(1,1_000_000,10_000_000,false,1.0,1000)
+        val before=clock.position(1240)!!
+        clock.sample(1,1_200_000,10_000_000,false,1.0,1250)
+        val after=clock.position(1300)!!
+        assertTrue("minor timing correction must not visibly stall the thumb",after-before>=40_000)
+        clock.sample(1,1_430_000,10_000_000,false,1.0,1500)
+        assertTrue(clock.position(1550)!!>after+190_000)
+    }
+    @Test fun presentationFailureOverridesOriginalAndHdrLabels() {
+        val receipt=doubleArrayOf(2.0,1.0,1.0,2.0,2_000_000.0,0.0,4.0,0.0,0.0,0.0,1080.0,1920.0,0.0,228.0)
+        assertEquals("画面提交失败：请查看诊断",enhancementLabel(receipt,0,false,true))
+        assertEquals("画面提交失败：请查看诊断",enhancementLabel(receipt,0,true,false))
+        assertEquals("画面提交失败：请查看诊断",enhancementLabel(receipt,2,true,true))
+    }
     @Test fun progressAcceptsExplicitSeekAndMediaChange() {
         val clock=PlaybackProgress()
         clock.sample(1,8_000_000,10_000_000,false,1.0,1000)

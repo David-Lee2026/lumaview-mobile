@@ -19,7 +19,10 @@ class PlaybackProgress {
    pending=null
    val discontinuity=current==null||abs(position-current)>1_000_000
    if(discontinuity||stopped){anchor=position;shown=position;anchorMs=now}
-   else if((lastSample==null||position>lastSample!!)||stopped!=paused||rate!=speed){anchor=if(stopped)max(shown,position)else position;anchorMs=now}
+   else if((lastSample==null||position>lastSample!!)||stopped!=paused||rate!=speed){// A native timestamp can trail the extrapolated UI clock by one poll.
+    // Correct its phase gradually instead of replacing the anchor and
+    // leaving the visible thumb stationary until native time catches up.
+    anchor=if(stopped)max(shown,position)else current?.let{it+((position-it)*.15).toLong()}?:position;anchorMs=now}
    lastSample=position
   }else if(current!=null&&(stopped!=paused||rate!=speed)){anchor=current;anchorMs=now}
   paused=stopped;speed=rate.coerceIn(.25,2.0)
