@@ -49,3 +49,5 @@ run `37149864931`：ARM64 构建成功、13 项单测通过；API29 六项集成
 审查指出原画/HDR文案会遮盖reason4，现将实际输出错误优先于模式描述。截图检查当前媒体、Surface、视图、请求全部编号匹配并要求正常/旁路回执，命令后再次检查；失败则删除PNG，不接受mpv原始帧回退当作增强截图。ANativeWindow lock/post强制故障注入尚未执行；不能把这项静态修正当作已完成故障注入验证。
 
 第二轮run37171065021：APK构建成功，旧包竖屏回归被Android测试签名检查拒绝，尚未运行播放验证，不能计作播放器测试失败。测试APK由新runner签名，与旧下载包签名不同。只对旧包的对比副本用当前测试证书重签名，逐一比较ZIP内所有非签名文件字节并保留原包/副本SHA256，确保程序和原生库未改变，再运行同一竖屏回归。
+
+第三轮run37171585546：ARM64构建及15项单测通过，旧包重签名退出2；之前脚本捕获stderr后没有输出，不能直接断言具体错误。相同旧APK与官方build-tools36 apksigner在本地重签名成功且所有非签名载荷字节一致。AGP32.2.1 AndroidLocations源码确认Android偏好目录优先使用ANDROID_USER_HOME/XDG_CONFIG_HOME，原脚本硬编码user.home/.android不能代表Gradle实际签名路径。现在通过:app:signingReport读取defaultDebug的实际Store，保留子命令错误，并在安装前验证旧副本与新测试APK证书SHA256完全一致。本地相同旧APK验证成功，待CI实际路径与全套测试确认。

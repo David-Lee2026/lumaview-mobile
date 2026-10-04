@@ -89,7 +89,7 @@ jobs:
       - name: Compile application, test APK and unit tests
         run: |
           set -o pipefail
-          ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultDebug :app:assembleDefaultDebugAndroidTest --stacktrace --no-daemon 2>&1 | tee release-evidence/gradle.log
+          ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultDebug :app:assembleDefaultDebugAndroidTest :app:signingReport --stacktrace --no-daemon 2>&1 | tee release-evidence/gradle.log
       - name: Validate signed installable APK, ABI and 16K alignment
         run: python3 ci/verify_apk.py ${{ matrix.arch }}
       - uses: actions/download-artifact@v4
