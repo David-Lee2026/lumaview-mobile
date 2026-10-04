@@ -1,38 +1,38 @@
 {
   "schemaVersion": 3,
-  "checkpoint": "Android-black-screen-progress-repair-0.1.1",
-  "updatedAt": "2026-10-03T20:26:41.490157+00:00",
-  "scope": "ARM64 static build checks; API29 and API35 x86_64 actual-window emulator tests",
-  "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+  "checkpoint": "Android-compatible-software-video-0.1.2",
+  "updatedAt": "2026-10-04T03:47:53.247570+00:00",
+  "scope": "ARM64 static build checks; API29/API35 x86_64 actual-window GPU and independent CPU output tests",
+  "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06",
   "apk": {
-    "version": "0.1.1-test",
+    "version": "0.1.2-test",
     "abi": "arm64-v8a",
-    "apkSha256": "2b4885f9e818221626d0fa8c188ac104f4f70708185330e0d13fb9fa66d28d9f",
-    "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+    "apkSha256": "014802e4aeae1685c1f3c968e1c67826d5996a5b2df2d670ecbf14a3205a7ca7",
+    "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06",
     "elf": [
       {
         "name": "lib/arm64-v8a/libavcodec.so",
-        "sha256": "4448cb43c54ea78a75d618f7b79903b4f76841a597ad259dc154a3cb58127dee",
+        "sha256": "c8d367cd1c3976a76973c612685ec4065c66476c18fb42cea23a22d9921de083",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavdevice.so",
-        "sha256": "b003a4b1ab4ac80beed7fd4f8113b7ce1224547e6de6fc9910033651583dfd6f",
+        "sha256": "d2aafc795025719f3823f2951505fedee922e5118af5b44d1601dccd2b088b55",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavfilter.so",
-        "sha256": "10629aca99b4e8aa17603e76cd1fe825e34cdb24ca4674e3e8a87f1680d81344",
+        "sha256": "8423705249165acce07280b7135a726ac69fea9865b7cee3ccdfdf2b3d3898bc",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavformat.so",
-        "sha256": "7aff96e76000b72f92d1f38256d561564def3a3d1cc2e660e05e7632b7217006",
+        "sha256": "35aa93a3bf08ffb19a96806bce729cc3be3fb71669ab6e6512b2d864e0885e0d",
         "loadAlignment16K": true
       },
       {
         "name": "lib/arm64-v8a/libavutil.so",
-        "sha256": "50f178aaf08757c6b966568a096d97fba49c0295e836dd05940e60441dc03f77",
+        "sha256": "ce8d2342e1de97bfdddbbeca29ab68227f2f327b36ea1d71b1c07318e81bbd10",
         "loadAlignment16K": true
       },
       {
@@ -42,7 +42,7 @@
       },
       {
         "name": "lib/arm64-v8a/libmpv.so",
-        "sha256": "971904bc9a95eab14f9d5076cb0dfdb535a770f91f054a3d8dbb9c9a2e874bbb",
+        "sha256": "48be490bc72803f1a3f617e554dc56350cb67d87a02b39ab255629521bae0752",
         "loadAlignment16K": true
       },
       {
@@ -52,7 +52,7 @@
       },
       {
         "name": "lib/arm64-v8a/libswresample.so",
-        "sha256": "487bcfd2c66275bca93ac41ba9afbdcb124c29ab2bbb8067ec759143d5a3cba8",
+        "sha256": "e98b2e865b1510b20047604d5f0b7234290fa4104af0ead90f367c553e486700",
         "loadAlignment16K": true
       },
       {
@@ -64,24 +64,24 @@
     "targetPhysicalDeviceTest": "NOT_RUN",
     "standaloneFontsIncluded": false
   },
-  "workflowRun": 37150812083,
-  "unitWorkflowRun": 37150812072,
+  "workflowRun": 37174350693,
+  "unitWorkflowRun": 37174350687,
   "unitTestEvidence": [
     {
       "artifactDirectory": "arm64",
-      "tests": 13,
+      "tests": 16,
       "failures": 0,
       "errors": 0
     },
     {
-      "artifactDirectory": "API29",
-      "tests": 13,
+      "artifactDirectory": "x86_64-API29",
+      "tests": 16,
       "failures": 0,
       "errors": 0
     },
     {
-      "artifactDirectory": "API35",
-      "tests": 13,
+      "artifactDirectory": "x86_64-API35",
+      "tests": 16,
       "failures": 0,
       "errors": 0
     }
@@ -94,17 +94,20 @@
       "instrumentation": {
         "environment": "Android API 29 x86_64 emulator",
         "physicalDevice": false,
-        "executedTests": 6,
+        "executedTests": 9,
         "failures": 0,
         "tests": [
           "highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement",
           "decoderSwitchesAndExposureSettingsReachTheDisplayedWindow",
+          "compatibleOutputShowsPortraitPlaybackAndEverySetting",
+          "portraitPauseControlIsVisibleAndWorks",
           "roiStatisticsIgnoreOutsideBrightnessAndRespondInside",
           "progressDoesNotJumpToZeroForMissingPositionSample",
           "realTouchRenderingAndExports",
-          "rendererFailureRecoversVisibleVideo"
+          "rendererFailureRecoversVisibleVideo",
+          "compatibleOutputSupportsRoiAndExports"
         ],
-        "runnerOutputSha256": "9d09f573f23172554c0e64c7c1a4305deaebaddc1fd79e8bcfcde57059462a7b"
+        "runnerOutputSha256": "9075443680d559aa0ddabbab604ea051baf893e3b52122a3357b3a65a71b4b52"
       },
       "results": {
         "sourceFixtureSha256": "9f68a1c1d7ffe47a07b215f169619bfc010b010cd5b9ace9dad6554a958f3cbe",
@@ -152,21 +155,21 @@
         },
         "roi": {
           "outsideOutputVariation": 0,
-          "brightOutputRatio": 1.0401551638851414,
-          "darkOutputRatio": 1.6242480990161792,
+          "brightOutputRatio": 1,
+          "darkOutputRatio": 1.5277777777777775,
           "outsideIndependence": true,
           "insideResponse": true,
           "physicalDevice": false
         },
         "DISPLAY_RESULT": {
           "api": 29,
-          "softwareLuma": 42.04104259352882,
-          "hardwareCopyLuma": 42.07332895326731,
+          "softwareLuma": 42.09005228235408,
+          "hardwareCopyLuma": 42.09005228235408,
           "hardwareCopyAvailable": false,
           "hardwareSelectionUsedSoftwareFallback": true,
-          "beforeExposureLuma": 42.07332895326731,
-          "afterExposureLuma": 47.852366840116815,
-          "returnedLuma": 47.852366840116815,
+          "beforeExposureLuma": 42.09005228235408,
+          "afterExposureLuma": 47.873057757809704,
+          "returnedLuma": 47.78613047994843,
           "surfaceRecreated": true,
           "settingsVisible": true,
           "physicalDevice": false
@@ -183,128 +186,128 @@
           "missingSampleKeptPosition": true,
           "samples": [
             {
-              "progress": 2707,
+              "progress": 6043,
               "top": 620
             },
             {
-              "progress": 2751,
+              "progress": 6104,
               "top": 620
             },
             {
-              "progress": 2793,
+              "progress": 6176,
               "top": 620
             },
             {
-              "progress": 2837,
+              "progress": 6292,
               "top": 620
             },
             {
-              "progress": 2932,
+              "progress": 6372,
               "top": 620
             },
             {
-              "progress": 2980,
+              "progress": 6435,
               "top": 620
             },
             {
-              "progress": 3021,
+              "progress": 6512,
               "top": 620
             },
             {
-              "progress": 3139,
+              "progress": 6578,
               "top": 620
             },
             {
-              "progress": 3148,
+              "progress": 6652,
               "top": 620
             },
             {
-              "progress": 3202,
+              "progress": 6713,
               "top": 620
             },
             {
-              "progress": 3246,
+              "progress": 6806,
               "top": 620
             },
             {
-              "progress": 3377,
+              "progress": 6888,
               "top": 620
             },
             {
-              "progress": 3424,
+              "progress": 6965,
               "top": 620
             },
             {
-              "progress": 3470,
+              "progress": 7029,
               "top": 620
             },
             {
-              "progress": 3563,
+              "progress": 7095,
               "top": 620
             },
             {
-              "progress": 3601,
+              "progress": 7144,
               "top": 620
             },
             {
-              "progress": 3642,
+              "progress": 7189,
               "top": 620
             },
             {
-              "progress": 3685,
+              "progress": 7263,
               "top": 620
             },
             {
-              "progress": 3778,
+              "progress": 7385,
               "top": 620
             },
             {
-              "progress": 3824,
+              "progress": 7448,
               "top": 620
             },
             {
-              "progress": 3889,
+              "progress": 7493,
               "top": 620
             },
             {
-              "progress": 3933,
+              "progress": 7695,
               "top": 620
             },
             {
-              "progress": 4000,
+              "progress": 7743,
               "top": 620
             },
             {
-              "progress": 4079,
+              "progress": 7840,
               "top": 620
             },
             {
-              "progress": 4123,
+              "progress": 7929,
               "top": 620
             },
             {
-              "progress": 4185,
+              "progress": 8014,
               "top": 620
             },
             {
-              "progress": 4236,
+              "progress": 8093,
               "top": 620
             },
             {
-              "progress": 4289,
+              "progress": 8169,
               "top": 620
             },
             {
-              "progress": 4341,
+              "progress": 8225,
               "top": 620
             },
             {
-              "progress": 4384,
+              "progress": 8267,
               "top": 620
             }
           ],
-          "displayedThumbStartX": 257,
-          "displayedThumbEndX": 605,
+          "displayedThumbStartX": 642,
+          "displayedThumbEndX": 1186,
           "physicalDevice": false
         },
         "HD_RESULT": {
@@ -315,22 +318,38 @@
               "width": 1920,
               "height": 1080,
               "decoder": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 / no",
-              "originalLuma": 21.929099751656313,
-              "enhancedLuma": 39.64172360584237
+              "originalLuma": 23.539869711788057,
+              "enhancedLuma": 44.28158031681806
             },
             {
               "name": "hd-hevc10.mp4",
               "width": 1920,
               "height": 1080,
               "decoder": "H.265 / HEVC (High Efficiency Video Coding) / no",
-              "originalLuma": 21.850335125447266,
-              "enhancedLuma": 39.62871030835121
+              "originalLuma": 23.538001286594557,
+              "enhancedLuma": 44.2630241394688
             }
           ],
           "physicalDevice": false
         },
         "huaweiPhysicalValidation": "NOT_RUN",
         "environment": "Android API 29 x86_64 emulator"
+      },
+      "cpuPortrait": {
+        "output": "lvm-android",
+        "originalLuma": 22.23649313759094,
+        "balancedLuma": 41.80234345618902,
+        "extremeLuma": 70.61592795281996,
+        "manualEvLuma": 48.31727617172617,
+        "contrastLowLuma": 63.12256720368864,
+        "contrastHighLuma": 32.786465032343,
+        "maxGrayChroma": 0,
+        "pauseWidthPixels": 108,
+        "rotation": 90,
+        "panelReopenPreservesComparisonAndLock": true,
+        "modeSelectedThroughUi": 2,
+        "uiModeLuma": 55.73547176479132,
+        "physicalDevice": false
       }
     },
     {
@@ -338,17 +357,20 @@
       "instrumentation": {
         "environment": "Android API 35 x86_64 emulator",
         "physicalDevice": false,
-        "executedTests": 6,
+        "executedTests": 9,
         "failures": 0,
         "tests": [
           "highDefinitionH264AndTenBitHevcDisplayOriginalAndEnhancement",
           "decoderSwitchesAndExposureSettingsReachTheDisplayedWindow",
+          "compatibleOutputShowsPortraitPlaybackAndEverySetting",
+          "portraitPauseControlIsVisibleAndWorks",
           "roiStatisticsIgnoreOutsideBrightnessAndRespondInside",
           "progressDoesNotJumpToZeroForMissingPositionSample",
           "realTouchRenderingAndExports",
-          "rendererFailureRecoversVisibleVideo"
+          "rendererFailureRecoversVisibleVideo",
+          "compatibleOutputSupportsRoiAndExports"
         ],
-        "runnerOutputSha256": "760467849eab74c44aac14999dcccdb4afc4b89f128df1a759734e6449dded01"
+        "runnerOutputSha256": "19842420fe8006e7662f715bc64d1122164f35eb84f4cb8f00ec2fcaebd80e7e"
       },
       "results": {
         "sourceFixtureSha256": "9f68a1c1d7ffe47a07b215f169619bfc010b010cd5b9ace9dad6554a958f3cbe",
@@ -396,21 +418,21 @@
         },
         "roi": {
           "outsideOutputVariation": 0,
-          "brightOutputRatio": 1.0401533648583454,
-          "darkOutputRatio": 1.6242486714563575,
+          "brightOutputRatio": 1,
+          "darkOutputRatio": 1.5277777777777775,
           "outsideIndependence": true,
           "insideResponse": true,
           "physicalDevice": false
         },
         "DISPLAY_RESULT": {
           "api": 35,
-          "softwareLuma": 42.084773844862596,
-          "hardwareCopyLuma": 42.084773844862596,
+          "softwareLuma": 42.06013522260097,
+          "hardwareCopyLuma": 42.06013522260097,
           "hardwareCopyAvailable": true,
           "hardwareSelectionUsedSoftwareFallback": false,
-          "beforeExposureLuma": 42.084773844862596,
-          "afterExposureLuma": 47.86815505338939,
-          "returnedLuma": 47.86815505338939,
+          "beforeExposureLuma": 42.06013522260097,
+          "afterExposureLuma": 47.841691572106164,
+          "returnedLuma": 47.841691572106164,
           "surfaceRecreated": true,
           "settingsVisible": true,
           "physicalDevice": false
@@ -427,128 +449,128 @@
           "missingSampleKeptPosition": true,
           "samples": [
             {
-              "progress": 2881,
+              "progress": 4205,
               "top": 612
             },
             {
-              "progress": 2944,
+              "progress": 4249,
               "top": 612
             },
             {
-              "progress": 3014,
+              "progress": 4359,
               "top": 612
             },
             {
-              "progress": 3137,
+              "progress": 4428,
               "top": 612
             },
             {
-              "progress": 3203,
+              "progress": 4495,
               "top": 612
             },
             {
-              "progress": 3246,
+              "progress": 4606,
               "top": 612
             },
             {
-              "progress": 3287,
+              "progress": 4649,
               "top": 612
             },
             {
-              "progress": 3324,
+              "progress": 4781,
               "top": 612
             },
             {
-              "progress": 3365,
+              "progress": 4824,
               "top": 612
             },
             {
-              "progress": 3422,
+              "progress": 4867,
               "top": 612
             },
             {
-              "progress": 3500,
+              "progress": 4924,
               "top": 612
             },
             {
-              "progress": 3639,
+              "progress": 4993,
               "top": 612
             },
             {
-              "progress": 3707,
+              "progress": 5044,
               "top": 612
             },
             {
-              "progress": 3785,
+              "progress": 5086,
               "top": 612
             },
             {
-              "progress": 3827,
+              "progress": 5231,
               "top": 612
             },
             {
-              "progress": 3951,
+              "progress": 5297,
               "top": 612
             },
             {
-              "progress": 3989,
+              "progress": 5362,
               "top": 612
             },
             {
-              "progress": 4038,
+              "progress": 5428,
               "top": 612
             },
             {
-              "progress": 4094,
+              "progress": 5469,
               "top": 612
             },
             {
-              "progress": 4176,
+              "progress": 5531,
               "top": 612
             },
             {
-              "progress": 4232,
+              "progress": 5605,
               "top": 612
             },
             {
-              "progress": 4295,
+              "progress": 5643,
               "top": 612
             },
             {
-              "progress": 4395,
+              "progress": 5752,
               "top": 612
             },
             {
-              "progress": 4470,
+              "progress": 5794,
               "top": 612
             },
             {
-              "progress": 4541,
+              "progress": 5865,
               "top": 612
             },
             {
-              "progress": 4603,
+              "progress": 5927,
               "top": 612
             },
             {
-              "progress": 4631,
+              "progress": 6005,
               "top": 612
             },
             {
-              "progress": 4673,
+              "progress": 6069,
               "top": 612
             },
             {
-              "progress": 4803,
+              "progress": 6132,
               "top": 612
             },
             {
-              "progress": 4856,
+              "progress": 6201,
               "top": 612
             }
           ],
-          "displayedThumbStartX": 276,
-          "displayedThumbEndX": 667,
+          "displayedThumbStartX": 432,
+          "displayedThumbEndX": 830,
           "physicalDevice": false
         },
         "HD_RESULT": {
@@ -559,22 +581,38 @@
               "width": 1920,
               "height": 1080,
               "decoder": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 / no",
-              "originalLuma": 21.919805083125468,
-              "enhancedLuma": 39.62355293470144
+              "originalLuma": 23.53994669271971,
+              "enhancedLuma": 44.28096657118818
             },
             {
               "name": "hd-hevc10.mp4",
               "width": 1920,
               "height": 1080,
               "decoder": "H.265 / HEVC (High Efficiency Video Coding) / no",
-              "originalLuma": 21.823723038335174,
-              "enhancedLuma": 39.62675479438465
+              "originalLuma": 23.533143664659967,
+              "enhancedLuma": 44.25621210733176
             }
           ],
           "physicalDevice": false
         },
         "huaweiPhysicalValidation": "NOT_RUN",
         "environment": "Android API 35 x86_64 emulator"
+      },
+      "cpuPortrait": {
+        "output": "lvm-android",
+        "originalLuma": 22.32889961295237,
+        "balancedLuma": 41.97885642808007,
+        "extremeLuma": 70.89763321033062,
+        "manualEvLuma": 48.50830380761837,
+        "contrastLowLuma": 63.352043235183096,
+        "contrastHighLuma": 32.92313307628168,
+        "maxGrayChroma": 0,
+        "pauseWidthPixels": 108,
+        "rotation": 90,
+        "panelReopenPreservesComparisonAndLock": true,
+        "modeSelectedThroughUi": 2,
+        "uiModeLuma": 55.95643333881726,
+        "physicalDevice": false
       }
     }
   ],
@@ -584,140 +622,140 @@
       "title": "固定源码、最小测试基础与可构建安装包",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T02",
       "title": "SAF 文件访问、文件页与只读输入租约",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T03",
       "title": "播放会话、异步代次与 Surface 安全生命周期",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T04",
       "title": "源视频坐标与统一视口数学",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T05",
       "title": "手势优先级与触点唯一所有权",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T06",
       "title": "可见播放控制、慢速、音量、轨道与横竖屏布局",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T07",
       "title": "原生 GPU 扩展、快照提交与实际应用回执",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T08",
       "title": "选区亮度统计、数值编码与曝光时间稳定",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T09",
       "title": "暗部降噪、局部提亮、高光与细节处理",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T10",
       "title": "增强面板、参数锁定、HDR 旁路与同视图对比",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T11",
       "title": "可调整触控选框、放大平移及区域增强联动",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T12",
       "title": "掉帧、热状态与增强资源自适应",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T13",
       "title": "微秒级 A／B 时间轴、边界预览与循环",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T14",
       "title": "FFmpeg 原生原码流剪辑与随机访问边界证明",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T15",
       "title": "Transformer 精确剪辑与所选轨道映射",
       "status": "LIMITED_IMPLEMENTATION",
       "reason": "SDR single-video/single-audio forced reencode; explicit multi-track refusal",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T16",
       "title": "安全输出提交、取消与可恢复失败",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T17",
       "title": "无控件截图、诊断信息与本地隐私检查",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T18",
       "title": "整机流程回归与可复现证据归档",
       "status": "IMPLEMENTED_PARTIAL_VALIDATION",
       "reason": "Implementation present; bounded CI checks available, full scenario matrix not executed",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T19",
       "title": "Mate 20 X 实物素材与持续性能验收",
       "status": "NOT_RUN",
       "reason": "No Huawei Mate 20 X / HarmonyOS 4.0 physical device connected",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     },
     {
       "id": "T20",
       "title": "发布门禁、签名、源码一致性与完整测试包",
       "status": "TEST_BUILD",
       "reason": "Debug signed APK; no stable production signing or main merge; target physical validation pending",
-      "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba"
+      "sourceCommit": "8b85c3c120113b1a99f2b83895b53dd2989b7e06"
     }
   ],
   "blockers": [
@@ -728,13 +766,18 @@
     {
       "code": "OPEN_FULL_ACCEPTANCE",
       "detail": "38 full criteria not executed; 4K/HDR enhancement bypass, export restrictions, provider/lifecycle/performance stress pending"
+    },
+    {
+      "code": "FAULT_INJECTION_NOT_EXECUTED",
+      "detail": "NativeWindow lock/post forced faults, HDR color fidelity and complete lifecycle/performance matrix NOT_RUN"
     }
   ],
   "previousCheckpointSummary": {
-    "checkpoint": "Android-test-build-20261003",
-    "sourceCommit": "44a98548fac22c66c99420cbe3cedfc5c1e0ede8",
-    "workflowRun": 37141636519,
-    "userReportedBlackScreen": true
+    "checkpoint": "Android-black-screen-progress-repair-0.1.1",
+    "sourceCommit": "af313c43423057eb381b5ec39e26bddb436621ba",
+    "workflowRun": 37150812083,
+    "userReportedPhysicalBlackScreen": true,
+    "diagnostic": "API29/Mali-G76/software H.264; original comparison black; engine receipt did not prove window presentation"
   },
   "regressions": {
     "oldProductionRun": 37144900225,
@@ -749,12 +792,22 @@
       29.901980362765922,
       42.00588805472154
     ],
-    "displayContainer": "SurfaceView",
-    "physicalBlackScreenCause": "Not reproduced on Huawei; no physical logs or connected device"
+    "displayContainer": "Fresh holder-owned SurfaceView on output switching",
+    "physicalBlackScreenCause": "User supplied real API29/Mali-G76 diagnostic; physical failure not reproduced here. Software output avoids EGL and has emulator window evidence.",
+    "portraitPreviousApkRegressionRun": 37174350693,
+    "cpuToGpuProducerCollisionRun": 37172487353,
+    "enhancementPanelInitializationAndDuplicateSubmit": "Repaired; UI and pixel regression passed",
+    "cpuPreviewLongestEdge": 960
   },
   "sourceAcquisition": {
     "status": "RESTORED",
     "expectedCommit": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af"
   },
-  "nextTask": "Target physical device and remaining acceptance scenarios"
+  "nextTask": "Target physical device and remaining acceptance scenarios",
+  "release": {
+    "tag": "v0.1.2-test",
+    "url": "https://github.com/David-Lee2026/lumaview-mobile/releases/tag/v0.1.2-test",
+    "publicDownloadVerified": true,
+    "physicalDevice": false
+  }
 }

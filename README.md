@@ -1,28 +1,30 @@
 # LumaView Mobile 光影增强播放器
 
-Android 本地视频播放器，恢复自固定版本 mpv-android，提供可见播放控制、暂停与倍速状态、触控／鼠标 ROI 框选放大、可见区域 GPU 低光增强，以及 A/B 片段导出。
+Android 本地视频播放器，恢复自固定版本 mpv-android，提供可见播放控制、暂停与倍速状态、触控／鼠标 ROI 框选放大、可见区域 GPU／兼容软件低光增强，以及 A/B 片段导出。
 
 开发分支：`implementation/android-20261003`。包名 `org.lumaview.mobile`，最低 API 23，目标／编译 API 36，ARM64 与 x86_64 分包，测试版本 `0.1.2-test`。不合并到 main。
 
 ## 构建和下载
 
-0.1.1用户真机反馈仍为黑屏（Mali-G76/API29/软件H.264，原画亦黑）。正在验证0.1.2，新增不经过GLES的原生软件RGBA输出，华为/荣耀默认选择该兼容路径；播放显示最长边960，导出仍保持原尺寸。更多→画面输出可选择兼容/OpenGL。新回执在成功post后产生，实际提交错误优先显示。窄竖屏暂停按钮改为均分宽度，进度用渐进时间校正减少短暂停顿。当前构建：[run37171065021](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37171065021)，源码`3d4ee2a595f722955077447f7b9bbbc3b5e57eda`。下列0.1.1结果为历史记录，不代表已修复这次真机故障。
+新版 `0.1.2-test`：[直接下载 ARM64 APK](https://github.com/David-Lee2026/lumaview-mobile/releases/download/v0.1.2-test/LumaView-Mobile-0.1.2-test-arm64-v8a.apk)、[SHA256SUMS](https://github.com/David-Lee2026/lumaview-mobile/releases/download/v0.1.2-test/SHA256SUMS.txt)、[完整构建日志与验证证据 ZIP](https://github.com/David-Lee2026/lumaview-mobile/releases/download/v0.1.2-test/LumaView-Mobile-0.1.2-test-build-and-validation.zip)、[构建报告](https://github.com/David-Lee2026/lumaview-mobile/releases/download/v0.1.2-test/BUILD_REPORT.txt)。公开链接已实际下载验证，不需要登录 GitHub。APK 44,102,610 字节，证据 ZIP 84,593,980 字节。
 
-黑屏／进度修复构建：[run 37150812083](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083)，源码提交 `af313c43423057eb381b5ec39e26bddb436621ba`。下载 [ARM64 APK 与校验／构建日志 ZIP](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284067796)、[API 29 验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284490899)、[API 35 验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284396232)。GitHub artifact 下载需登录，保留 30 天。
+APK SHA256：`014802e4aeae1685c1f3c968e1c67826d5996a5b2df2d670ecbf14a3205a7ca7`。构建源码 `8b85c3c120113b1a99f2b83895b53dd2989b7e06`；[完整成功 run 37174350693](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37174350693)。三个构建各16项核心单测通过；API29/35 x86_64模拟器各9项集成测试与导出完整解码／压缩负载检查通过。
 
-ARM64 APK SHA256：`2b4885f9e818221626d0fa8c188ac104f4f70708185330e0d13fb9fa66d28d9f`。三个构建各 13 项单测通过；API 29 / 35 x86_64 模拟器各 6 项真实屏幕／播放／ROI／导出集成测试和主机导出校验通过。华为真机与完整 38 项严格验收场景仍未执行。
+针对0.1.1真机仍黑屏的新反馈，华为/荣耀默认选择独立软件RGBA输出（不经过OpenGL/EGL）；更多→画面输出可选择兼容或OpenGL。兼容预览最长边960，导出保持源视频尺寸。正常回执在成功post后产生；输出切换先停止内核，再新建holder-owned SurfaceView，避免CPU与EGL的BufferQueue连接冲突。
 
-默认使用软件解码，避免零复制硬件纹理路径；可从“解码设置”选择硬件复制解码。视频恢复官方 SurfaceView 显示路径，播放器控件采用软件 Canvas 绘制；固定请求 GLES 3，shader 故障逐级回退到兼容增强或原画，并明确显示状态。暂停曝光调整立即更新画面；缺失位置样本保留有效进度，连续播放以独立 UI 时钟平滑更新。具体调查和失败记录见 [黑屏调查](docs/implementation/black-screen-investigation.md)。
+已验证实际系统窗口中的原画、增强模式、+0.5EV、对比度和饱和度；增强面板重开保留原画对比／曝光锁，切换模式只提交一次并同步勾选框。360dp竖屏暂停按钮均分宽度且可点击；进度缺失样本不回零，30次采样不倒退且控制条高度保持，系统截图滑块真实前进。还覆盖旋转/ROI、1080p H.264与10-bit HEVC、两级GPU故障恢复、Surface重建和片段导出。具体失败与修复记录见[黑屏调查](docs/implementation/black-screen-investigation.md)。
 
-[APK 与集成验证 workflow](https://github.com/David-Lee2026/lumaview-mobile/actions/workflows/mobile-release.yml) 复用成功 run `37127934301` 的 `native-arm64`、`native-x86_64`。仅为固定 FFmpeg 增加 MP4 muxer，并重编译带 LumaView 扩展的固定 mpv 与 JNI；其他原生依赖复用现有产物。
+这些结果均为CI、静态检查或模拟器结果。华为/Mali-G76真机、真实素材和持续性能验证仍为NOT_RUN；完整38项严格验收仍保留未执行项。0.1.1的成功模拟器结果未能代表用户真机，其历史构建为[run37150812083](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083)。
 
-成功 run 的 `LumaView-Android-arm64` 包含可直接安装的 ARM64 APK、`SHA256SUMS.txt`、依赖锁定、构建日志、签名／包信息／ZIP 与 ELF 对齐检查、单元测试结果。`LumaView-Android-x86_64-API29` 与 `LumaView-Android-x86_64-API35` 分别包含对应模拟器的真实触控／系统窗口截图、故障恢复、进度、ROI、导出媒体、编码器摘要和完整解码／压缩包负载检查。x86_64 APK 单独保存在 `LumaView-APK-x86_64-API29` / `API35`。`LumaView-readable-source` 固定同一源码提交；构建不会跟随移动中的分支 head。
+APK使用测试调试证书，尚未建立稳定发行签名；若安装提示签名冲突，须卸载旧测试版再安装，卸载会清除应用内历史与暂存。未合并main。
+
+[APK workflow](.github/workflows/mobile-release.yml)复用成功run37127934301的native-arm64/native-x86_64，固定FFmpeg增加MP4 muxer，并重编译带LumaView扩展的固定mpv/JNI。证据包含SDK/NDK、原生与Gradle日志、签名/ABI/ZIP/ELF对齐、单元/集成结果、系统窗口PNG、诊断与导出媒体。
 
 ## 功能和当前限制
 
 文件库支持系统文档、目录浏览和最近记录；播放器支持可见进度、快退／快进、0.25–2× 倍速、音量、画面方向、轨道／字幕、逐帧、截图与触控锁定。ROI 支持触控／鼠标选框、应用／取消和放大后平移。
 
-SDR 增强包括 ROI 统计、带历史平滑的自动曝光、高光保护、局部提亮、空间降噪和有噪声门控的细节处理。HDR 及源纹理超过 2,073,600 像素时明确保留原画；4K 增强预算优化尚未完成。原画对比保留当前 ROI。渲染回执与媒体、Surface、选区修订和请求编号对应。
+SDR 增强包括 ROI 统计、带历史平滑的自动曝光、高光保护、局部提亮、空间降噪和有噪声门控的细节处理。HDR明确旁路；GPU源纹理超过2,073,600像素时保留原画，兼容路径缩放后处理；4K 增强预算优化尚未完成。原画对比保留当前 ROI。渲染回执与媒体、Surface、选区修订和请求编号对应。
 
 原码流模式支持可证实 IDR 边界的 H.264／HEVC，确认窗显示请求区间和向外延展的实际安全区间；精确模式强制 H.264／AAC 重编码，仅用于 SDR 单视频／单音轨源。两种模式均不写入播放增强、ROI 裁剪或临时旋转。详细限制见 [验证说明](docs/implementation/validation-notes.md)。
 
