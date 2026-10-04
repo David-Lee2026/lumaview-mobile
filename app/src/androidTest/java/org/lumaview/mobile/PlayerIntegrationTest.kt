@@ -256,10 +256,12 @@ class PlayerIntegrationTest {
    assertTrue(dialogNode(compareText).isChecked);assertTrue(dialogNode(lockText).isChecked)
    var spinner:AccessibilityNodeInfo?=null
    fun findSpinner(node:AccessibilityNodeInfo){if(node.className?.toString()=="android.widget.Spinner")spinner=node;for(i in 0 until node.childCount)node.getChild(i)?.let{findSpinner(it)}}
+   val modeRequest=session.state.receipt!![3]
    findSpinner(inst.uiAutomation.rootInActiveWindow);assertNotNull(spinner);assertTrue(spinner!!.performAction(AccessibilityNodeInfo.ACTION_CLICK));Thread.sleep(350);dialogPress("弱光增强")
    waitFor("mode selected through UI"){session.state.receipt?.let{it[5]==2.0&&it[6]==0.0}==true}
+   assertEquals("one mode selection must preserve its single reset request",modeRequest+1,session.state.receipt!![3],0.0)
    assertFalse(dialogNode(compareText).isChecked);assertFalse(dialogNode(lockText).isChecked)
-   dialogPress("完成");val uiModeLuma=mean(screenSnapshot("cpu-ui-mode"));assertTrue("UI mode changes displayed pixels",uiModeLuma>original*1.12)
+   dialogPress("完成");val uiModeLuma=mean(screenSnapshot("cpu-ui-mode"));assertTrue("UI mode changes displayed pixels",uiModeLuma>balanced*1.02)
    tap("画面增强");dialogPress("重置");waitFor("UI enhancement reset"){session.state.receipt?.get(5)==1.0}
    frame(EnhanceSettings(),"cpu-before-ui-settings")
    val uiRequest=session.state.receipt!![3];tap("画面增强")

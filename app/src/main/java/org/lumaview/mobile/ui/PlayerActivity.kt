@@ -145,8 +145,8 @@ class PlayerActivity:Activity(),SurfaceHolder.Callback {
   slider("饱和度",0,150,enhancement.saturation.toInt()){enhancement=enhancement.copy(saturation=it.toFloat())}
   slider("保边空间降噪",0,100,enhancement.denoise.toInt()){enhancement=enhancement.copy(denoise=it.toFloat())}
   slider("细节（有噪声门控）",0,30,enhancement.detail.toInt()){enhancement=enhancement.copy(detail=it.toFloat())}
-  panel.addView(comparison.apply{text="原画对比（选区与倍数不变）";isChecked=enhancement.bypass;setOnCheckedChangeListener{_,v->enhancement=enhancement.copy(bypass=v);sendEnhancement()}})
-  panel.addView(exposureLock.apply{text="锁定当前曝光（重选区域后解除）";isChecked=enhancement.locked;isEnabled=s.receipt!=null;setOnCheckedChangeListener{_,v->enhancement=enhancement.copy(locked=v);sendEnhancement()}})
+  panel.addView(comparison.apply{text="原画对比（选区与倍数不变）";isChecked=enhancement.bypass;setOnCheckedChangeListener{_,v->if(v!=enhancement.bypass){enhancement=enhancement.copy(bypass=v);sendEnhancement()}}})
+  panel.addView(exposureLock.apply{text="锁定当前曝光（重选区域后解除）";isChecked=enhancement.locked;isEnabled=s.receipt!=null;setOnCheckedChangeListener{_,v->if(v!=enhancement.locked){enhancement=enhancement.copy(locked=v);sendEnhancement()}}})
   val scroll=ScrollView(this);scroll.addView(panel);AlertDialog.Builder(this).setTitle("视频像素增强 · 非屏幕背光").setView(scroll).setPositiveButton("完成",null).setNeutralButton("重置"){_,_->enhancement=EnhanceSettings();quality=0;sendEnhancement()}.show()
  }
  private fun toggleClip(){clipPanel.visibility=if(clipPanel.visibility==View.VISIBLE)View.GONE else View.VISIBLE;if(clipPanel.visibility==View.VISIBLE){s.durationUs?.takeIf{it>0}?.let{if(clipRange==null)clipRange=ClipRange(0,it)};updateClip()}else{loop=false;session.setLoop(null)}}
