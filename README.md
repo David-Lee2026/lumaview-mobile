@@ -2,9 +2,11 @@
 
 Android 本地视频播放器，恢复自固定版本 mpv-android，提供可见播放控制、暂停与倍速状态、触控／鼠标 ROI 框选放大、可见区域 GPU 低光增强，以及 A/B 片段导出。
 
-开发分支：`implementation/android-20261003`。包名 `org.lumaview.mobile`，最低 API 23，目标／编译 API 36，ARM64 与 x86_64 分包，测试版本 `0.1.1-test`。不合并到 main。
+开发分支：`implementation/android-20261003`。包名 `org.lumaview.mobile`，最低 API 23，目标／编译 API 36，ARM64 与 x86_64 分包，测试版本 `0.1.2-test`。不合并到 main。
 
 ## 构建和下载
+
+0.1.1用户真机反馈仍为黑屏（Mali-G76/API29/软件H.264，原画亦黑）。正在验证0.1.2，新增不经过GLES的原生软件RGBA输出，华为/荣耀默认选择该兼容路径；播放显示最长边960，导出仍保持原尺寸。更多→画面输出可选择兼容/OpenGL。新回执在成功post后产生，实际提交错误优先显示。窄竖屏暂停按钮改为均分宽度，进度用渐进时间校正减少短暂停顿。当前构建：[run37171065021](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37171065021)，源码`3d4ee2a595f722955077447f7b9bbbc3b5e57eda`。下列0.1.1结果为历史记录，不代表已修复这次真机故障。
 
 黑屏／进度修复构建：[run 37150812083](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083)，源码提交 `af313c43423057eb381b5ec39e26bddb436621ba`。下载 [ARM64 APK 与校验／构建日志 ZIP](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284067796)、[API 29 验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284490899)、[API 35 验证证据](https://github.com/David-Lee2026/lumaview-mobile/actions/runs/37150812083/artifacts/11284396232)。GitHub artifact 下载需登录，保留 30 天。
 
